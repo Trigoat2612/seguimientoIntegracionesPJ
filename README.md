@@ -1,47 +1,65 @@
-# Tablero de Integraciones PJ · V1.7 — Filtro de especialidad
+# Tablero de Integraciones PJ · V1.8 — Desarrollo y validación documentada
 
-## Qué cambia
+## Objetivo
 
-- **Base de trabajo:** V1.6. Se conserva íntegro el comportamiento de OAuth privado con Google Drive, las observaciones GTI/SOFTPLAN y el catálogo fijo de Sheet2.
-- **Filtro global:** en la parte superior, «Especialidad» permite elegir **Todas las integraciones** (predeterminado) o **Laboral · 36 integraciones**. No hace falta importar otra vez el Excel de Laboral.
-- **Vista Todas:** tras autorizar Google o cargar el Excel técnico, muestra las **42 integraciones/sistemas** registrados en la fuente original, con los 94 endpoints/operaciones documentados. No se asigna una especialidad a los demás registros, pues solo Laboral está identificada explícitamente.
-- **Vista Laboral:** muestra las **36 filas de Sheet2**, en su orden original, incluso sin conexión a Google. Vincula sus estados y operaciones con los 35 sistemas técnicos distintos del Excel SOFTPLAN. CONADIS y SUNAT comparten PIDE y **no se duplican sus componentes** en el progreso global.
-- El filtro se aplica a **Resumen ejecutivo, Sistemas, Integraciones, Endpoints y Datos técnicos**. La exportación CSV de integraciones técnicas, endpoints, atributos y observaciones también respeta el filtro. Los datos del catálogo fijo no se alteran.
-- **Progreso de Laboral:** indicador visible en Resumen ejecutivo e Integraciones. Promedio de etapas por **componente único** vinculado en `Sistemas`, excluyendo sin estado evaluable. Escala: pendiente 0 %, análisis 20 %, revisión 35 %, desarrollo 55 %, enviado a calidad 80 %, no requiere modificación 100 %.
-- **Este porcentaje es referencial, NO equivale a pruebas aprobadas, implementaciones concluidas ni conformidad.** Las integraciones sin datos técnicos no se consideran 0 %.
+Se mantiene la V1.7 y se incorpora al filtro **Especialidad → Laboral** un panel con dos indicadores **separados** y un apartado desplegable «¿Cómo se calculan estos indicadores?».
 
-## Validación contra archivo SOFTPLAN de referencia (09/10/2026)
+**Indicador 1: Avance estimado de desarrollo**
+- Fuente: hoja `Sistemas` del Excel técnico de SOFTPLAN, cargado desde Google Drive privado o por archivo.
+- Unidad: componentes técnicos únicos de los sistemas vinculados al catálogo fijo de Laboral. PIDE se contabiliza una sola vez aunque CONADIS y SUNAT lo compartan.
+- Se usan las etapas existentes y sus *pesos de referencia propios del tablero*:
 
-| Indicador | Todas | Laboral |
-|---|---:|---:|
-| Integraciones en listado | 42 | 36 |
-| Sistemas técnicos únicos | 42 | 35 |
-| Endpoints y operaciones | 94 | 87 |
-| Componentes | 58 | 48 |
-| Componentes con etapa evaluable (Laboral) | — | 44 |
-| Avance estimado Laboral | — | 54 % |
+  | Estado | Peso |
+  |---|---:|
+  | Pendiente | 0 % |
+  | En análisis | 20 % |
+  | En revisión | 35 % |
+  | En desarrollo | 55 % |
+  | Enviado a calidad | 80 % |
+  | No requiere modificación | 100 % |
 
-Estos valores dependen de la versión del Excel técnico que se cargue desde Google. Las 36 filas de Laboral no cambiarán mientras no se actualice expresamente `catalogo-fijo.js`.
+- Fórmula: `REDONDEAR(SUMA(n.º componentes por estado × peso) / n.º componentes con estado evaluable, 0)`.
+- Se excluyen los componentes sin estado evaluable, se informa su cantidad y **no se les asigna 0 %**.
+- No es un porcentaje certificado de desarrollo, ni acredita que pruebas o despliegues hayan concluido.
 
-## Puesta en marcha
+**Indicador 2: Validación con conformidad documentada**
+- Fuente: **hoja opcional** `Validaciones` o `Validaciones Laboral` en el MISMO Excel técnico de Google.
+- El archivo técnico compartido inicialmente no contiene una hoja con ese registro, así que el tablero muestra **N/D** (no calculable), **no** un 0 % que pueda interpretarse como ausencia de pruebas reales.
+- Denominador fijo: 36 integraciones del catálogo de Laboral (`Lista_Integraciones.xlsx`, Sheet2, incorporado como `catalogo-fijo.js`).
+- Numerador: integraciones que cumplan las **cuatro condiciones**: resultado de pruebas aprobado, referencia de evidencia de pruebas, conformidad otorgada, referencia de evidencia de conformidad.
+- Fórmula una vez exista la hoja: `REDONDEAR(integraciones acreditadas / 36 × 100, 0)`.
+- No se considera evidencia: «Enviado a calidad», datos/ambientes de prueba, disponibilidad, enlaces a análisis técnico, referencias vacías o «NO APLICA».
+- Una hoja presente pero sin integraciones acreditadas mostraría `0 %` **de conformidades acreditadas por la fuente**, sin afirmar que no se hayan ejecutado pruebas.
 
-1. `python -m http.server 8080` en esta carpeta y abrir `http://localhost:8080`.
-2. En Fuentes → Google Drive, autorizar con la cuenta permitida; o cargar el Excel `.xlsx` localmente.
-3. Ver **Todas las integraciones**, luego seleccionar **Laboral** en el filtro superior.
-4. Comprobar la barra de progreso estimado y el listado de 36 en **Integraciones**.
-5. Para Vercel, sustituir los archivos en GitHub y desplegar como sitio estático con la función `/api/drive` heredada.
+### Formato opcional de «Validaciones»
 
-## Seguridad y limitaciones
+Se puede copiar `plantilla_validaciones_laboral.csv` a Google Sheets como **una nueva pestaña** llamada `Validaciones` dentro del documento técnico privado. Mantener exactamente estas columnas (sin importar mayúsculas ni tildes):
 
-- Mantener el Excel privado; OAuth se efectúa en el navegador y el token queda solo en memoria.
-- **No subir ningún Client Secret** a GitHub o Vercel. Solo es público el OAuth Client ID (en `config.js`).
-- El catálogo fijo distribuido como JavaScript es visible para cualquier visitante del sitio. Protege el acceso a la aplicación si su contenido es reservado.
-- Las observaciones manuales se guardan localmente por navegador, no en Drive.
-- En el entorno de construcción se comprobó sintaxis JavaScript y lógica con el modelo extraído del Excel original; la prueba visual de Chromium no pudo ejecutarse porque el entorno bloquea conexiones localhost.
+`Integración`, `Resultado de pruebas`, `Evidencia de pruebas`, `Conformidad`, `Evidencia de conformidad`
+
+- `Resultado de pruebas`: `APROBADA` / `APROBADO` (u `CONCLUIDA APROBADA`).
+- `Evidencia de pruebas`: identificador de acta, ticket, enlace a documento de resultados u otra referencia comprobable.
+- `Conformidad`: `CONFORME` / `APROBADA` / `APROBADO` / `CONFORMIDAD OTORGADA`.
+- `Evidencia de conformidad`: enlace, acta o código documental verificable.
+- `Integración`: nombre como figura en el catálogo fijo. Se evita asignar evidencias a otra integración por similitud de nombres.
+- Los registros duplicados no se suman dos veces y se advierten en la leyenda.
+
+**Seguridad:** el tablero muestra el *estado de acreditación* y la fila de origen; no publica el contenido de documentos de prueba ni secretos. La hoja sigue estando protegida por los permisos OAuth del Excel privado. Las evidencias no se editan en el navegador; se actualizan en el libro de Google y se pulsa «Actualizar Google».
+
+## Prueba local y despliegue
+
+1. Ejecutar `python -m http.server 8080` dentro de la carpeta del proyecto.
+2. Abrir `http://localhost:8080` y autorizar la cuenta de Google mediante **Fuentes → Google Drive → Autorizar y leer privado**.
+3. En **Especialidad**, seleccionar **Laboral** y abrir el panel «¿Cómo se calculan estos indicadores?».
+4. Comprobar los subtotales por etapa, los componentes sin clasificación y el origen de la validación.
+5. Desplegar el mismo directorio a GitHub/Vercel. Conserva `config.js` con **solo** el Client ID, nunca el Client Secret.
+
+**No cambian:** OAuth privado, catálogo fijo de 36 integraciones, filtro Todas/Laboral, observaciones GTI/SOFTPLAN, endpoints, equivalencias y documentación técnica.
 
 ## Historial
 
-- V1.4: base estable histórica (comentarios GTI y SOFTPLAN visibles).
-- V1.5.1: fuente privada y OAuth.
-- V1.6: catálogo fijo Laboral de 36 integraciones.
-- **V1.7: selector global Todas/Laboral y avance agregado por especialidad.**
+- **V1.4:** base estable histórica.
+- **V1.5.1:** lectura OAuth privada.
+- **V1.6:** catálogo fijo Laboral.
+- **V1.7:** filtro Todas/Laboral y avance estimado por etapas.
+- **V1.8:** indicadores separados de desarrollo y validación acreditada, con fórmula auditada en pantalla.

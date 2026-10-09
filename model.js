@@ -80,7 +80,7 @@ export function buildModel(sheets, origin='Archivo Excel'){
  // Attribute-matrix sheets (Operation + field + IN/OUT). The same operation repeats across rows.
  for(const [sheet,rows] of sheets.entries()){
   const key=canonical(sheet);
-  if(key==='SISTEMAS'||key==='CASILLERO'||key==='STORED PROCEDURES')continue;
+  if(key==='SISTEMAS'||key==='CASILLERO'||key==='STORED PROCEDURES'||key==='VALIDACIONES'||key==='VALIDACIONES LABORAL')continue;
   const headerRow=rows.findIndex(r=>canonical(get(r,1))==='OPERACION'&&canonical(get(r,3))==='ATRIBUTO');
   if(headerRow>=0){let lastApp='';const commentCols=observationColumns(rows[headerRow]);let previousEndpoint=null;
    for(let i=headerRow+1;i<rows.length;i++){

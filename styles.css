@@ -105,3 +105,43 @@
 .specialty-progress-metrics span:before{content:'•';color:#219aba;margin-right:7px}
 .specialty-progress-foot{margin:12px 0 0;color:#8190a4;font-size:10px;line-height:1.6}
 @media(max-width:640px){.specialty-filter-bar,.specialty-progress-header{align-items:flex-start;flex-direction:column}.specialty-filter-group{width:100%}.specialty-filter-group .select{flex:1;width:auto}.specialty-progress-value{text-align:left}.specialty-progress{padding:15px!important}}
+/* V1.8: cálculo trazable de desarrollo y validación por especialidad */
+.metrics-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:17px}
+.metrics-heading h2{font-size:18px;color:#183b57;margin:5px 0 5px}
+.metrics-heading p{font-size:11px;line-height:1.6;color:#69839b;margin:0}
+.metrics-source{font-size:10px;color:#738da2;background:#f2f7fa;border:1px solid #e3edf4;padding:7px 11px;border-radius:20px;white-space:nowrap}
+.specialty-progress-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.metric-card{background:#f9fbfe;border:1px solid #e2eaf3;border-radius:11px;padding:18px;min-width:0}
+.metric-validation{background:#fbfcfd}
+.metric-title{font-size:12px;color:#294d67;font-weight:780;line-height:1.4}
+.metric-number{font-size:34px;font-weight:850;color:#0b7291;margin:10px 0 5px;line-height:1.1;letter-spacing:-1px}
+.metric-validation .metric-number{color:#496b87}
+.metric-number.metric-unknown{font-size:30px;color:#78889b}
+.metric-card p{font-size:11px;line-height:1.5;color:#6f879d;min-height:32px;margin:0}
+.metric-card .specialty-progress-track{height:10px;margin:13px 0 11px}
+.specialty-validation-fill{height:100%;background:#547ba2;border-radius:20px;transition:width .25s}
+.validation-track{background:repeating-linear-gradient(135deg,#e7ecf1 0,#e7ecf1 7px,#f3f5f8 7px,#f3f5f8 14px)}
+.metric-foot{font-size:10px;color:#526f85;font-weight:650;line-height:1.5}
+.specialty-progress .specialty-progress-metrics{margin-top:15px}
+.calculation-legend{border-top:1px solid #e4ebf1;margin-top:18px;padding-top:16px}
+.calculation-legend>summary,.validation-breakdown>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#136c87;font-size:12px;font-weight:800;cursor:pointer;list-style:none}
+.calculation-legend>summary::-webkit-details-marker,.validation-breakdown>summary::-webkit-details-marker{display:none}
+.calculation-legend>summary:before,.validation-breakdown>summary:before{content:'▸';margin-right:8px;font-size:14px}
+.calculation-legend[open]>summary:before,.validation-breakdown[open]>summary:before{content:'▾'}
+.calculation-legend>summary span:first-child{flex:1}
+.legend-hint{font-size:10px;color:#8093aa;font-weight:600}
+.calculation-legend-body{padding:15px 0 0}
+.calculation-legend-body section{border:1px solid #e3edf4;border-radius:10px;padding:17px;margin-bottom:12px;background:#fff}
+.calculation-legend-body h3{font-size:13px;color:#213e5b;margin:0 0 10px}
+.calculation-legend-body p{font-size:11px;color:#657e94;line-height:1.7;margin:8px 0}
+.calculation-table{min-width:480px}
+.calculation-table th,.calculation-table td{padding:9px 12px;font-size:11px}
+.calculation-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.calculation-table .calculation-total{background:#f3f8fa}
+.calculation-equation{color:#2b556d!important;font-weight:650}
+.calculation-result{border-left:3px solid #2197ae;background:#f3fafc;padding:12px 14px;color:#245a72!important;font-variant-numeric:tabular-nums}
+.calculation-caveat{color:#788a9e!important}
+.calculation-disclaimer{font-size:11px!important;color:#49657b!important;margin:10px 0 0!important}
+.validation-breakdown{margin-top:13px}
+.validation-breakdown>summary{display:inline-flex;font-size:11px}
+@media(max-width:780px){.specialty-progress-grid{grid-template-columns:1fr}.metrics-heading{flex-direction:column}.metrics-source{white-space:normal}.legend-hint{display:none}}
