@@ -74,3 +74,34 @@
 .tree-feedback-text{color:#34536e;font-size:11px;line-height:1.65;margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere}
 .tree-excel-feedback>.detail-button{margin-top:10px}
 @media(max-width:750px){.tree-system+.tree-excel-feedback{margin-left:8px}.tree-excel-feedback{margin:0 7px 10px}.tree-feedback-cards{grid-template-columns:1fr}}
+
+/* V1.6 — catálogo fijo de 36 integraciones, visible sin fuente Google */
+.catalog-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 17px}
+.catalog-summary>div{padding:17px 20px;background:#fff;border:1px solid #e1eaf2;border-radius:11px;display:flex;flex-direction:column;gap:6px}
+.catalog-summary strong{font-size:25px;font-weight:850;color:#173a56}.catalog-summary span{font-size:10px;color:#798ea3;line-height:1.4}
+.catalog-filters{display:flex;align-items:center;gap:9px;flex-wrap:wrap;width:100%}.catalog-filters .search{min-width:245px;flex:1;max-width:none}
+.catalog-filters .select{flex:1;min-width:150px;max-width:240px}.catalog-table{min-width:1140px}.catalog-table .catalog-id{color:#7b92a9;font-weight:700}.catalog-table .catalog-main td{vertical-align:middle}.catalog-table .catalog-metric{font-size:11px;color:#315672}
+.catalog-detail-row>td{padding:0 18px 15px!important;background:#f8fbfd}.catalog-detail{border:1px solid #e0e9f3;background:#fff;border-radius:9px;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.catalog-detail h3{font-size:12px;color:#264964;margin:0 0 10px}.catalog-detail p,.catalog-detail dd{font-size:11px;line-height:1.65;color:#46627f;margin:0}.catalog-detail-main,.catalog-detail-docs{min-width:0}.catalog-observation{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:10px!important}.catalog-detail-docs dl{display:grid;grid-template-columns:minmax(150px,1fr) minmax(150px,1.25fr);gap:6px 12px;margin:0}.catalog-detail-docs dt{font-size:10px;font-weight:750;color:#748ba1}.catalog-detail-docs dd{overflow-wrap:anywhere}.catalog-doclink{color:#007fa0;font-size:11px;font-weight:750}.catalog-tech-info{grid-column:1/-1;border-top:1px solid #e6edf4;padding-top:14px}.catalog-tech-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+@media(max-width:900px){.catalog-summary{grid-template-columns:repeat(2,1fr)}.catalog-detail{grid-template-columns:1fr}.catalog-detail-docs dl{grid-template-columns:1fr 1.2fr}}
+@media(max-width:560px){.catalog-summary{grid-template-columns:1fr 1fr}.catalog-summary>div{padding:13px}.catalog-filters .search,.catalog-filters .select{min-width:100%;max-width:none}.catalog-detail-docs dl{grid-template-columns:1fr}}
+
+/* V1.7 — filtro global por especialidad y progreso de Laboral */
+.specialty-filter-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-3px 0 19px;padding:10px 14px;background:#fff;border:1px solid #e0eaf3;border-radius:11px}
+.specialty-filter-group{display:flex;align-items:center;gap:12px}
+.specialty-filter-group label{font-size:11px;font-weight:800;color:#3f5873}
+.specialty-filter-group .select{width:244px;max-width:100%;font-weight:700}
+.specialty-selection{font-size:10px;color:#527187;background:#edf7fa;border-radius:50px;padding:8px 13px}
+.scope-notice{font-size:11px;line-height:1.6;color:#42617a;background:#f1f7fa;border:1px solid #dfebf3;padding:12px 16px;border-radius:9px;margin:0 0 17px}
+.specialty-progress{margin:18px 0;padding:24px!important;border:1px solid #dce9f1!important}
+.specialty-progress-header{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.specialty-progress-header h2{font-size:18px;line-height:1.35;color:#173a56;margin:6px 0 3px}
+.specialty-progress-header p{font-size:11px;color:#71899e;line-height:1.5;margin:0}
+.specialty-progress-value{font-size:34px;font-weight:850;color:#146c88;white-space:nowrap;text-align:right}
+.specialty-progress-value small{display:block;font-size:10px;font-weight:600;color:#8196aa}
+.specialty-progress-track{height:12px;border-radius:30px;background:#e4edf3;overflow:hidden;margin:18px 0 13px}
+.specialty-progress-fill{height:100%;background:linear-gradient(90deg,#1983b4,#31ae91);border-radius:30px;transition:width .25s}
+.specialty-progress-metrics{display:flex;flex-wrap:wrap;gap:8px 24px;color:#365a75;font-size:11px;font-weight:700}
+.specialty-progress-metrics span:before{content:'•';color:#219aba;margin-right:7px}
+.specialty-progress-foot{margin:12px 0 0;color:#8190a4;font-size:10px;line-height:1.6}
+@media(max-width:640px){.specialty-filter-bar,.specialty-progress-header{align-items:flex-start;flex-direction:column}.specialty-filter-group{width:100%}.specialty-filter-group .select{flex:1;width:auto}.specialty-progress-value{text-align:left}.specialty-progress{padding:15px!important}}

@@ -7,4 +7,5 @@ window.DASHBOARD_SOURCE = Object.freeze({
   refreshMinutes: 15
 });
 // Client ID es un identificador publico para OAuth en el navegador.
+// NO incluya aqui el client_secret del JSON proporcionado por Google.
 window.DASHBOARD_GOOGLE_CLIENT_ID = '958927898893-ig0brj6an7leptqc5gqtstflslvufjgt.apps.googleusercontent.com';
