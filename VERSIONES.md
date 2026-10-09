@@ -5,3 +5,4 @@
 - **V1.6 — Catálogo fijo Laboral:** 36 integraciones extraídas de Sheet2.
 - **V1.7 — Filtro de especialidad:** Todas/Laboral; avance de adecuación estimado a partir de Sistemas.
 - **V1.8 — Métricas trazables:** indicadores de desarrollo y validación documentada, detalle de pesos, fórmula y fuente, con hoja opcional «Validaciones».
+- **V1.8.1 — Leyenda de fórmula explícita:** encabezados A/B/C consistentes, multiplicaciones por fila y cálculo de tres pasos auditable.

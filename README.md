@@ -1,4 +1,4 @@
-# Tablero de Integraciones PJ · V1.8 — Desarrollo y validación documentada
+# Tablero de Integraciones PJ · V1.8.1 — Desarrollo y validación documentada
 
 ## Objetivo
 
@@ -63,3 +63,9 @@ Se puede copiar `plantilla_validaciones_laboral.csv` a Google Sheets como **una 
 - **V1.6:** catálogo fijo Laboral.
 - **V1.7:** filtro Todas/Laboral y avance estimado por etapas.
 - **V1.8:** indicadores separados de desarrollo y validación acreditada, con fórmula auditada en pantalla.
+
+## V1.8.1 — Fórmula del desarrollo sin inferencias
+
+Se alinearon la fórmula y los nombres de las columnas visibles: **N.º de componentes (A)**, **Avance asignado (B)** y **Aporte (C = A × B)**. En cada fila aparece la operación numérica completa, por ejemplo `7 × 55 = 385`, donde 55 es el valor numérico de 55 %.
+
+Tres pasos calculados dinámicamente explican el promedio: (1) sumar los aportes de C, (2) sumar los componentes de A y (3) dividir los resultados y redondear. En el Excel de referencia: `2.380 ÷ 44 = 54,09 % → 54 %`. Los cuatro componentes sin estado evaluable permanecen excluidos y visibles en la advertencia. No se modifica la lógica de cálculo ni la acreditación de validaciones.

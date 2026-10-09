@@ -145,3 +145,16 @@
 .validation-breakdown{margin-top:13px}
 .validation-breakdown>summary{display:inline-flex;font-size:11px}
 @media(max-width:780px){.specialty-progress-grid{grid-template-columns:1fr}.metrics-heading{flex-direction:column}.metrics-source{white-space:normal}.legend-hint{display:none}}
+
+/* V1.8.1: explicación del promedio ponderado, sin términos implícitos. */
+.calculation-instructions{color:#345976!important;background:#f6f9fb;border-radius:7px;padding:10px 12px;line-height:1.65!important}
+.calculation-table{min-width:610px}
+.calculation-table thead th{white-space:normal;line-height:1.45}
+.calculation-table thead th:nth-child(2),.calculation-table thead th:nth-child(3),.calculation-table thead th:nth-child(4){min-width:125px}
+.calculation-table td{vertical-align:middle}
+.calculation-operation{color:#627b92;font-variant-numeric:tabular-nums}
+.calculation-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.calculation-step{display:flex;align-items:flex-start;gap:10px;border:1px solid #dce8f1;background:#f8fbfd;border-radius:9px;padding:12px;min-width:0;font-size:11px;line-height:1.55;color:#274863}
+.calculation-step-number{display:flex;align-items:center;justify-content:center;background:#deeff7;color:#126a88;border-radius:50%;width:23px;height:23px;flex:0 0 23px;font-weight:800}
+.calculation-step-math{margin-top:8px;word-break:normal;overflow-wrap:anywhere;color:#375e76;font-variant-numeric:tabular-nums}
+@media(max-width:1000px){.calculation-steps{grid-template-columns:1fr}}
