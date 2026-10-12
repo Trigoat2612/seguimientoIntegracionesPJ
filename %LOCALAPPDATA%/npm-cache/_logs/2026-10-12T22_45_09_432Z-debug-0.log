@@ -1,0 +1,39 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\ProgramData\npm\npm\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.8.0
+2 info using node@v24.11.1
+3 silly config load:file:C:\ProgramData\npm\npm\node_modules\npm\npmrc
+4 silly config load:file:D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\.npmrc
+5 silly config load:file:C:\Users\Miguel\.npmrc
+6 silly config load:file:C:\Users\Miguel\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install"
+9 verbose logfile logs-max:10 dir:D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\%LOCALAPPDATA%\npm-cache\_logs\2026-10-12T22_45_09_432Z-
+10 verbose logfile D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\%LOCALAPPDATA%\npm-cache\_logs\2026-10-12T22_45_09_432Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly idealTree buildDeps
+14 silly reify moves {}
+15 verbose stack Error: Could not read package.json: Error: ENOENT: no such file or directory, open 'D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\package.json'
+15 verbose stack     at async open (node:internal/fs/promises:642:25)
+15 verbose stack     at async readFile (node:internal/fs/promises:1279:14)
+15 verbose stack     at async read (C:\ProgramData\npm\npm\node_modules\npm\node_modules\@npmcli\package-json\lib\read-package.js:9:18)
+15 verbose stack     at async PackageJson.load (C:\ProgramData\npm\npm\node_modules\npm\node_modules\@npmcli\package-json\lib\index.js:131:31)
+15 verbose stack     at async PackageJson.normalize (C:\ProgramData\npm\npm\node_modules\npm\node_modules\@npmcli\package-json\lib\index.js:117:5)
+15 verbose stack     at async runScript (C:\ProgramData\npm\npm\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script.js:11:28)
+15 verbose stack     at async Install.exec (C:\ProgramData\npm\npm\node_modules\npm\lib\commands\install.js:163:9)
+15 verbose stack     at async Npm.exec (C:\ProgramData\npm\npm\node_modules\npm\lib\npm.js:208:9)
+15 verbose stack     at async module.exports (C:\ProgramData\npm\npm\node_modules\npm\lib\cli\entry.js:67:5)
+16 error code ENOENT
+17 error syscall open
+18 error path D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\package.json
+19 error errno -4058
+20 error enoent Could not read package.json: Error: ENOENT: no such file or directory, open 'D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\package.json'
+21 error enoent This is related to npm not being able to find a file.
+21 error enoent
+22 verbose cwd D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios
+23 verbose os Windows_NT 10.0.26200
+24 verbose node v24.11.1
+25 verbose npm  v11.8.0
+26 verbose exit -4058
+27 verbose code -4058
+28 error A complete log of this run can be found in: D:\PJ\ProyectosProgramables\integraciones.Seguimiento.Servicios\%LOCALAPPDATA%\npm-cache\_logs\2026-10-12T22_45_09_432Z-debug-0.log

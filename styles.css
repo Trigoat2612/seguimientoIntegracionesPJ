@@ -158,3 +158,89 @@
 .calculation-step-number{display:flex;align-items:center;justify-content:center;background:#deeff7;color:#126a88;border-radius:50%;width:23px;height:23px;flex:0 0 23px;font-weight:800}
 .calculation-step-math{margin-top:8px;word-break:normal;overflow-wrap:anywhere;color:#375e76;font-variant-numeric:tabular-nums}
 @media(max-width:1000px){.calculation-steps{grid-template-columns:1fr}}
+
+/* V1.9 — Resumen táctico Laboral. Composición basada en la lámina Status Integraciones. */
+.tactical-intro{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:21px 24px!important;margin:0 0 17px}
+.tactical-intro h2{font-size:20px;margin:5px 0 5px;color:#132f4c}
+.tactical-intro p{margin:0;color:#668298;font-size:11px;line-height:1.65}
+.tactical-intro-actions{display:flex;align-items:flex-end;flex-direction:column;gap:8px;min-width:240px}
+.tactical-origin{font-size:10px;color:#6b8297;text-align:right}
+.tactical-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:15px}
+.tactical-kpi{display:flex;align-items:center;gap:14px;text-align:left;background:#fff;border:1px solid #dce7f0;border-top:6px solid var(--tactical-color);border-radius:7px;padding:15px 19px;cursor:pointer;transition:box-shadow .17s,transform .17s}
+.tactical-kpi:hover{box-shadow:0 5px 19px #143e6217;transform:translateY(-1px)}
+.tactical-kpi:focus-visible,.tactical-item-button:focus-visible,.tactical-secondary-header:focus-visible{outline:3px solid #31a1ca;outline-offset:2px}
+.tactical-kpi-active{box-shadow:0 0 0 2px var(--tactical-color) inset}
+.tactical-kpi-number{font-size:37px;line-height:1;font-weight:850;min-width:34px;color:var(--tactical-color);font-variant-numeric:tabular-nums}
+.tactical-kpi span:last-child{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tactical-kpi strong{font-size:13px;color:#173651;line-height:1.1}
+.tactical-kpi small{color:#6a7b8a;font-size:10px}
+.tactical-validated{--tactical-color:#2c803d}
+.tactical-to-validate{--tactical-color:#123b6a}
+.tactical-testing{--tactical-color:#ca611b}
+.tactical-developing{--tactical-color:#e5a500}
+.tactical-unspecified{--tactical-color:#8393a4}
+.tactical-main{margin:18px 0 22px}
+.tactical-section-title{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:14px}
+.tactical-section-title h2{font-size:17px;color:#1b3953;margin:0 0 5px}
+.tactical-section-title p{font-size:11px;margin:0;color:#758c9e}
+.tactical-search{display:flex;align-items:center;gap:8px}
+.tactical-search .input{min-width:230px;width:270px}
+.tactical-columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+.tactical-columns:has(.tactical-status-panel:only-child){grid-template-columns:minmax(250px,520px)}
+.tactical-status-panel{border:1px solid #dae5ee;border-left:5px solid var(--tactical-color);border-radius:7px;background:#fff;min-width:0;overflow:hidden}
+.tactical-status-panel-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:15px 14px 11px;border-bottom:1px solid #eaf0f5}
+.tactical-status-panel-heading h3{font-size:12px;color:#1c344c;margin:0;line-height:1.25}
+.tactical-status-panel-heading strong{font-size:19px;color:var(--tactical-color)}
+.tactical-item-list{padding:5px 11px 13px;min-height:78px}
+.tactical-item{border-bottom:1px solid #edf2f5}
+.tactical-item:last-child{border-bottom:0}
+.tactical-item-green{background:linear-gradient(90deg,#e6f7e9 0,#fbfffc 100%);border-left:3px solid #289b53;border-radius:5px;padding-left:4px}
+.tactical-item-button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:6px;width:100%;border:0;background:transparent;text-align:left;padding:12px 5px;cursor:pointer;color:#294761}
+.tactical-item-title{font-size:11px;line-height:1.45;font-weight:760;min-width:0;overflow-wrap:anywhere}
+.tactical-item-meta{grid-column:1;color:#73899b;font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+.tactical-chevron{grid-column:2;grid-row:1 / span 2;color:#5f819d;align-self:center}
+.tactical-flag{grid-column:1;color:#157b39;font-weight:740;font-size:9px;letter-spacing:.02em}
+.tactical-detail{padding:10px 8px 12px;background:#f5f9fb;border:1px solid #e6eef4;border-radius:6px;margin:0 4px 10px;overflow-wrap:anywhere}
+.tactical-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.tactical-detail-field{min-width:0}
+.tactical-detail-field b{font-size:10px;color:#385a70;display:block;line-height:1.45}
+.tactical-detail-field p{font-size:10px;color:#3d6077;line-height:1.5;white-space:normal;margin:4px 0 6px;overflow-wrap:anywhere}
+.tactical-detail-wide{border-top:1px solid #dce7ef;margin-top:8px;padding-top:9px}
+.tactical-source-reference{font-size:9px;line-height:1.5;color:#8194a4;margin-top:10px;border-top:1px dashed #dbe6ed;padding-top:8px}
+.tactical-empty{font-size:10px;color:#889bad;padding:15px 4px;line-height:1.5}
+.tactical-mini-note{font-size:10px;line-height:1.7;color:#6f8598;margin:13px 0}
+.tactical-secondary{margin-top:18px;padding:0!important;overflow:hidden}
+.tactical-secondary-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;border:0;background:#fff;text-align:left;cursor:pointer;padding:19px 23px}
+.tactical-secondary-header>span:first-child{display:flex;flex-direction:column;gap:5px}
+.tactical-secondary-header strong{font-size:16px;color:#203c53}
+.tactical-secondary-header small{font-size:11px;color:#73889c}
+.tactical-secondary-chevron{font-size:24px;color:#5c829b}
+.tactical-secondary-body{border-top:1px solid #e5edf3;padding:14px 20px 21px;background:#fafcfe}
+.tactical-secondary-counts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tactical-secondary-counts span{border:1px solid #dce7ef;border-radius:15px;background:#fff;padding:6px 11px;font-size:10px;color:#46637a}
+.tactical-secondary-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.tactical-nonpriority{background:#fff;border:1px solid #e0e9f1;padding:8px;border-radius:8px;min-width:0}
+.tactical-nonpriority .tactical-item{border:none}
+.tactical-state-inline{display:inline-block;background:#f1f5f9;color:var(--tactical-color);font-size:10px;font-weight:760;padding:4px 7px;border-radius:4px}
+.tactical-uncategorized{margin-top:10px;border:1px dashed #b8c8d5;border-radius:7px;background:#fff;padding:14px}
+.tactical-uncategorized h3{font-size:12px;color:#466075;margin:0 0 9px}
+.tactical-footer,.tactical-placeholder{font-size:11px;line-height:1.7;color:#647c92;padding:13px 17px;border:1px solid #dceaf2;background:#f0f7fb;border-radius:8px}
+.tactical-placeholder{padding:32px;text-align:center;background:#fff}
+.tactical-source-option{padding:17px 23px;margin-top:13px;border-top:1px solid #e3edf3}
+.tactical-source-option h3{margin:0 0 7px;font-size:12px;color:#254662}
+.tactical-source-option p{color:#668095;font-size:11px;line-height:1.6;margin:0 0 12px}
+.tactical-source-option .btn{display:inline-flex;align-items:center;margin:0 6px 6px 0;cursor:pointer}
+@media(max-width:1420px){.tactical-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical-secondary-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.tactical-intro,.tactical-section-title{flex-direction:column;align-items:stretch}.tactical-intro-actions{align-items:flex-start;min-width:0}.tactical-origin{text-align:left}.tactical-columns,.tactical-secondary-list{grid-template-columns:1fr}.tactical-search .input{min-width:0;width:100%}}
+@media(max-width:480px){.tactical-kpis{grid-template-columns:1fr}.tactical-kpi{padding:11px 15px}.tactical-kpi-number{font-size:31px}.tactical-search{flex-wrap:wrap}.tactical-detail-grid{grid-template-columns:1fr}}
+
+/* V1.9.1: alertas visibles por fechas «Por informar» / «Revisión con…» en H, I o J. */
+.tactical-item-date-alert{border-left:3px solid #c02b38;background:#fff6f6;border-radius:5px;padding-left:4px}
+.tactical-item-green.tactical-item-date-alert{background:linear-gradient(90deg,#fff3f3 0%,#f5fff7 100%);border-left:3px solid #c02b38}
+.tactical-date-flag{grid-column:1;display:inline-flex;align-items:center;width:max-content;max-width:100%;border:1px solid #f1a5ac;background:#ffe4e6;border-radius:4px;color:#a21929;font-weight:800;font-size:10px;padding:3px 6px;line-height:1.35}
+.tactical-date-notice{border:1px solid #e98995;border-left:4px solid #bf2637;border-radius:6px;background:#fff0f1;color:#921a2a;display:flex;flex-direction:column;gap:4px;padding:9px 11px;margin-bottom:12px;line-height:1.5}
+.tactical-date-notice strong{font-size:11px}
+.tactical-date-notice span{font-size:10px}
+.tactical-date-field-alert{border:1px solid #f0b0b7;background:#fff1f2;border-radius:5px;padding:6px 8px}
+.tactical-date-field-alert b,.tactical-date-field-alert p{color:#972032}
+.tactical-date-count{color:#a61e2d}

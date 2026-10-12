@@ -1,4 +1,5 @@
 import {parseXlsx} from './xlsx.js';
+import {parseTactical,getTacticalSummary,TACTICAL_STATES,TACTICAL_MAX_ROW} from './tactical.js';
 import {CATALOGO_FIJO, linkCatalogItem} from './catalogo-fijo.js';
 import {buildModel,STAGE_PROGRESS} from './model.js';
 import {calculateDevelopment,calculateValidation} from './progress-metrics.js';
@@ -18,16 +19,18 @@ const CONFIG_SOURCE=window.DASHBOARD_SOURCE||{};
 const DEFAULT_GOOGLE_URL=String(CONFIG_SOURCE.url||'').trim();
 const PRIVATE_GOOGLE_SOURCE=String(CONFIG_SOURCE.access||'public').toLowerCase()==='private';
 const REFRESH_MINUTES=Math.min(120,Math.max(5,Number(CONFIG_SOURCE.refreshMinutes)||15));
+const TACTICAL_GOOGLE_URL=String(window.DASHBOARD_TACTICAL_SOURCE?.url||'').trim();
+let tacticalData=null,tacticalBusy=false,tacticalError='',tacticalOrigin='',tacticalQuery='',tacticalStateFilter='Todos',tacticalOpened=new Set(),tacticalSecondaryOpen=false;
 let specialty='todas',catalogSearch='',catalogObserved='todos',catalogAvailability='todos',catalogLinkFilter='todos',catalogExpanded=new Set();
 let validationEvidence=calculateValidation(new Map(),CATALOGO_FIJO);
 let driveBusy=false;
 let hierarchy=null,excelNotes=[],notes=loadObservations(),expandedSystems=new Set(),expandedIntegrations=new Set(),systemFilter='',technicalIntegrationFilter='',technicalFilter='',model=null,activeTab='overview',query='',stateFilter='',equivFilter='',integrationFilter='',page=1,sortMode='endpoints',currentSource='none',currentDriveUrl='',refreshTimer=null,refreshOn=false,accessToken='',googleClient=null,drawerId=null;
-const tabTitles={systems:['Sistemas e integraciones','Desglose desde Sistemas a componentes de integración y endpoints, con observaciones por nivel.','Sistemas'],overview:['Panel de integraciones','Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.','Resumen ejecutivo'],integrations:['Integraciones por especialidad','Todas las integraciones del Excel técnico o las 36 de Laboral, seleccionables desde el filtro superior.','Integraciones'],endpoints:['Catálogo de endpoints','Equivalencias, atributos y trazabilidad hacia la pestaña y fila de origen.','Endpoints'],technical:['Documentación técnica','Estructuras de datos y procedimientos que no deben contabilizarse como endpoints.','Datos técnicos']};
+const tabTitles={tactical:['Resumen táctico · Laboral','Estado situacional de integraciones con foco en criticidad Alta, dependencias e hitos.','Resumen táctico'],systems:['Sistemas e integraciones','Desglose desde Sistemas a componentes de integración y endpoints, con observaciones por nivel.','Sistemas'],overview:['Panel de integraciones','Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.','Resumen ejecutivo'],integrations:['Integraciones por especialidad','Todas las integraciones del Excel técnico o las 36 de Laboral, seleccionables desde el filtro superior.','Integraciones'],endpoints:['Catálogo de endpoints','Equivalencias, atributos y trazabilidad hacia la pestaña y fila de origen.','Endpoints'],technical:['Documentación técnica','Estructuras de datos y procedimientos que no deben contabilizarse como endpoints.','Datos técnicos']};
 function alertMsg(msg,type='success'){el('alert-area').innerHTML=`<div class="notice ${type==='error'?'error':type==='success'?'success':''}">${escape(msg)}</div>`;setTimeout(()=>{if(el('alert-area')?.textContent===msg)el('alert-area').innerHTML='';},13000);}
 function setLoading(loading,msg='Analizando archivo…'){el('import-status').textContent=loading?msg:'Listo.';el('load-button').disabled=loading;el('drive-public').disabled=loading;el('drive-private').disabled=loading;}
 function openImport(){el('import-modal').classList.remove('hidden');}
 function closeImport(){el('import-modal').classList.add('hidden');}
-function switchTab(tab){activeTab=tab;page=1;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();}
+function switchTab(tab){activeTab=tab;page=1;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();}
 async function loadWorkbook(bytes,origin){
  setLoading(true,'Leyendo las hojas y normalizando información…');
  try{const sheets=await parseXlsx(bytes);const candidate=buildModel(sheets,origin);const newHierarchy=buildHierarchy(candidate);
@@ -81,6 +84,7 @@ async function loadPrivateDrive({background=false}={}){
   if(!response.ok){if(response.status===401)accessToken='';throw new Error(`No se pudo descargar el libro: HTTP ${response.status}.`);}
   await loadWorkbook(await response.arrayBuffer(),'Drive privado · '+trim(info.name,30));
   currentDriveUrl=url;sessionStorage.setItem('drive-url',url);configureRefresh();
+  await loadTacticalPrivate({background:true});
  }catch(err){
   const msg='Drive privado: '+err.message;el('import-status').textContent=msg;alertMsg(msg,'error');
   el('source-pill').textContent=model?'Drive · sin sincronizar':'Drive · acceso pendiente';
@@ -101,6 +105,89 @@ function refreshGoogle(){
  // Una accion explicita del usuario puede solicitar el consentimiento OAuth de nuevo.
  if(PRIVATE_GOOGLE_SOURCE||currentSource.startsWith('Drive privado'))return loadPrivateDrive();
  return loadPublicDrive();
+}
+
+async function loadTacticalWorkbook(bytes,origin){
+ const sheets=await parseXlsx(bytes);
+ const next=parseTactical(sheets);
+ tacticalData=next;tacticalError='';tacticalOrigin=origin;
+ render();return next;
+}
+async function loadTacticalFile(file){
+ if(!file)return;
+ if(!/\.xlsx$/i.test(file.name)){tacticalError='Selecciona un archivo táctico .xlsx.';render();return;}
+ tacticalBusy=true;tacticalError='';render();
+ try{await loadTacticalWorkbook(await file.arrayBuffer(),'Archivo local · '+file.name);}catch(e){tacticalError=e.message;render();}
+ finally{tacticalBusy=false;render();}
+}
+async function loadTacticalPrivate({background=false}={}){
+ if(tacticalBusy)return false;
+ tacticalBusy=true;tacticalError='';render();
+ try{
+  if(!TACTICAL_GOOGLE_URL)throw new Error('Falta la URL de la fuente táctica en config.js.');
+  if(!accessToken){if(background)throw new Error('Autoriza Google para acceder al resumen táctico.');await authorizeGoogle();}
+  const id=driveId(TACTICAL_GOOGLE_URL),headers={Authorization:`Bearer ${accessToken}`};
+  const metadata=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,mimeType`,{headers,cache:'no-store'});
+  if(!metadata.ok){if(metadata.status===401)accessToken='';throw new Error(`No se pudo leer el documento táctico (${metadata.status}). Revisa permisos de Drive.`);}
+  const info=await metadata.json();
+  let url='';
+  if(info.mimeType==='application/vnd.google-apps.spreadsheet')url=`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet`;
+  else if(info.mimeType==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')url=`https://www.googleapis.com/drive/v3/files/${id}?alt=media`;
+  else throw new Error('La fuente táctica debe ser un Google Sheets o archivo Excel .xlsx.');
+  const response=await fetch(url,{headers,cache:'no-store'});
+  if(!response.ok){if(response.status===401)accessToken='';throw new Error(`Descarga del seguimiento táctico fallida (${response.status}).`);}
+  await loadTacticalWorkbook(await response.arrayBuffer(),'Drive privado · '+trim(info.name,45));
+  return true;
+ }catch(e){tacticalError=e.message||'No fue posible leer el seguimiento táctico.';render();if(!background)alertMsg('Resumen táctico: '+tacticalError,'error');return false;}
+ finally{tacticalBusy=false;render();}
+}
+const tacticalLong=(s)=>escape(s||'No registrado').replace(/\r?\n/g,'<br>');
+function tacticalDetail(entry){
+ const alerts=entry.dateAlerts||[];
+ const alertFields=new Set(alerts.map(a=>a.field));
+ const pair=(name,value)=>`<div class="tactical-detail-field ${alertFields.has(name)?'tactical-date-field-alert':''}"><b>${escape(name)}</b><p>${tacticalLong(value)}</p></div>`;
+ return `<div class="tactical-detail">
+ ${alerts.length?`<div class="tactical-date-notice" role="alert"><strong>⚠ Fecha pendiente de definición</strong><span>Revisar ${escape(alerts.map(a=>a.field).join(', '))}: contiene «Por informar» o «Revisión con…».</span></div>`:''}
+ <div class="tactical-detail-grid">
+ ${pair('Dependencia',entry.dependency)}
+ ${pair('Cierre desarrollo',entry.developmentClose)}
+ ${pair('Cierre pruebas SOFTPLAN / GTI',entry.testsClose)}
+ ${pair('Validación GSJ',entry.gsjValidation)}
+ </div><div class="tactical-detail-wide">${pair('Estado situacional / hitos',entry.history)}${pair('Consideraciones',entry.considerations)}</div>
+ <div class="tactical-source-reference">Fuente: ${escape(entry.sheet)} · fila ${entry.row} · Criticidad: ${escape(entry.criticality||'No registrada')}${entry.green?' · Resaltada en verde en la fuente':''}</div></div>`;
+}
+function tacticalIntegrationRow(entry){
+ const expanded=tacticalOpened.has(entry.id),dateAlert=!!entry.dateAlerts?.length;
+ return `<div class="tactical-item ${entry.green?'tactical-item-green':''} ${dateAlert?'tactical-item-date-alert':''}">
+ <button class="tactical-item-button" data-tactical-toggle="${escape(entry.id)}" aria-expanded="${expanded}" title="Consultar el estado situacional y fechas"><span class="tactical-item-title">${escape(entry.name)}</span>${entry.green?'<span class="tactical-flag" title="La criticidad tiene relleno verde en Excel">◆ Destacada en origen</span>':''}${dateAlert?`<span class="tactical-date-flag" title="Fecha pendiente: ${escape(entry.dateAlerts.map(a=>a.field).join(', '))}">⚠ Fecha por confirmar</span>`:''}<span class="tactical-item-meta">${escape(entry.dependency||'Dependencia no indicada')}</span><span class="tactical-chevron">${expanded?'▾':'▸'}</span></button>
+ ${expanded?tacticalDetail(entry):''}</div>`;
+}
+function tacticalCard(state,items,priority=true){
+ const klass=({'Validada':'validated','Por validar':'to-validate','En pruebas':'testing','En desarrollo':'developing'})[state]||'unspecified';
+ const filtered=items.filter(e=>e.status===state&&(tacticalStateFilter==='Todos'||tacticalStateFilter===state)&&(!tacticalQuery||norm([e.name,e.dependency,e.history,e.considerations].join(' ')).includes(norm(tacticalQuery))));
+ const allCount=items.filter(e=>e.status===state).length;
+ return `<article class="tactical-status-panel tactical-${klass}"><div class="tactical-status-panel-heading"><h3>${escape(state)}</h3><strong>${allCount}</strong></div><div class="tactical-item-list">${filtered.map(tacticalIntegrationRow).join('')||'<div class="tactical-empty">Sin integraciones para este filtro.</div>'}</div></article>`;
+}
+function renderTactical(){
+ const view=el('view-tactical');if(!view)return;
+ if(!tacticalData){view.innerHTML=`<div class="tactical-intro panel"><div><div class="eyebrow">SEGUIMIENTO TÁCTICO · LABORAL</div><h2>Integraciones priorizadas por criticidad</h2><p>Fuente privada independiente: hoja «Seguimiento» del documento táctico de Google Drive.</p></div><button class="btn btn-primary" data-action="tactical-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Consultando Google…':'↻ Actualizar resumen táctico'}</button></div>${tacticalError?`<div class="notice error">${escape(tacticalError)}</div>`:''}<div class="tactical-placeholder">La información táctica todavía no se ha cargado. Autoriza una cuenta con acceso al segundo documento y actualiza esta pestaña. La fuente técnica del tablero permanece independiente.</div>`;return;}
+ const summary=getTacticalSummary(tacticalData);const coverageNotice=summary.all!==CATALOGO_FIJO.length?`<div class="notice"><strong>Control de cobertura:</strong> Seguimiento contiene ${summary.all} registros y el catálogo fijo de Laboral contiene ${CATALOGO_FIJO.length}. Revisar posibles diferencias, duplicados o integraciones adicionales; no se eliminan automáticamente.</div>`:'';const shown=summary.high.filter(e=>(tacticalStateFilter==='Todos'||tacticalStateFilter===e.status)&&(!tacticalQuery||norm([e.name,e.dependency,e.history,e.considerations].join(' ')).includes(norm(tacticalQuery)))).length;
+ const cards=TACTICAL_STATES.map(state=>{const cls=({'Validada':'validated','Por validar':'to-validate','En pruebas':'testing','En desarrollo':'developing'})[state];return `<button class="tactical-kpi tactical-${cls} ${tacticalStateFilter===state?'tactical-kpi-active':''}" data-tactical-status="${escape(state)}" aria-pressed="${tacticalStateFilter===state}"><span class="tactical-kpi-number">${summary.highCounts[state]}</span><span><strong>${escape(state)}</strong><small>Criticidad Alta</small></span></button>`;}).join('');
+ const priorityUnknown=summary.high.filter(e=>e.status==='Sin clasificar');
+ const otherVisible=summary.other.filter(e=>(tacticalStateFilter==='Todos'||tacticalStateFilter===e.status)&&(!tacticalQuery||norm([e.name,e.dependency,e.history,e.considerations].join(' ')).includes(norm(tacticalQuery))));
+ view.innerHTML=`<section class="tactical-intro panel"><div><div class="eyebrow">ESPECIALIDAD LABORAL · FOCO CRÍTICO</div><h2>Status integraciones</h2><p>${summary.all} registros en Seguimiento · ${summary.high.length} de criticidad Alta · ${summary.other.length} no priorizadas</p></div><div class="tactical-intro-actions"><span class="tactical-origin">${escape(tacticalOrigin)} · ${new Date(tacticalData.readAt).toLocaleString('es-PE')}</span><button class="btn btn-light btn-sm" data-action="tactical-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Actualizando…':'↻ Actualizar táctico'}</button></div></section>
+ ${tacticalError?`<div class="notice error">${escape(tacticalError)}. Se muestran los últimos datos de la sesión actual.</div>`:''}${coverageNotice}
+ <div class="tactical-kpis">${cards}</div>
+ <section class="tactical-main"><div class="tactical-section-title"><div><h2>Integraciones priorizadas · Criticidad Alta</h2><p>Haz clic en una integración para consultar dependencia, fechas, hitos y consideraciones.</p></div><div class="tactical-search"><input class="input" id="tactical-search" placeholder="Buscar integración o dependencia…" value="${escape(tacticalQuery)}"><button class="btn btn-light btn-sm" data-action="tactical-clear" title="Mostrar todos los estados">Todos los estados</button></div></div>
+ <div class="tactical-columns">${TACTICAL_STATES.filter(s=>tacticalStateFilter==='Todos'||tacticalStateFilter===s).map(s=>tacticalCard(s,summary.high)).join('')}</div>
+ ${priorityUnknown.length?`<div class="tactical-uncategorized"><h3>Estados por clasificar (${priorityUnknown.length})</h3>${priorityUnknown.map(tacticalIntegrationRow).join('')}</div>`:''}
+ <p class="tactical-mini-note">${shown} integración(es) priorizada(s) visibles · ${summary.green} resaltadas en verde en la fuente · <strong class="tactical-date-count">${summary.dateAlertCount} con alerta roja por fechas pendientes</strong>. Se leen únicamente las filas 1–${TACTICAL_MAX_ROW}. Los rangos y textos se muestran sin asumir fechas confirmadas.</p>
+ </section>
+ <section class="panel tactical-secondary"><button class="tactical-secondary-header" data-action="tactical-secondary" aria-expanded="${tacticalSecondaryOpen}"><span><span class="eyebrow">VISTA SECUNDARIA</span><strong>Integraciones no priorizadas</strong><small>Criticidad diferente de Alta o no informada · ${summary.other.length} registros</small></span><span class="tactical-secondary-chevron">${tacticalSecondaryOpen?'▾':'▸'}</span></button>
+ ${tacticalSecondaryOpen?`<div class="tactical-secondary-body"><div class="tactical-secondary-counts">${TACTICAL_STATES.map(s=>`<span>${escape(s)}: <b>${summary.otherCounts[s]}</b></span>`).join('')}${summary.otherCounts['Sin clasificar']?`<span>Sin clasificar: <b>${summary.otherCounts['Sin clasificar']}</b></span>`:''}</div><div class="tactical-secondary-list">${otherVisible.map(e=>`<div class="tactical-nonpriority"><span class="tactical-state-inline tactical-${({'Validada':'validated','Por validar':'to-validate','En pruebas':'testing','En desarrollo':'developing'})[e.status]||'unspecified'}">${escape(e.status)}</span>${tacticalIntegrationRow(e)}</div>`).join('')||'<p class="tactical-empty">No hay registros con el filtro seleccionado.</p>'}</div></div>`:''}
+ </section>
+ ${tacticalData.warnings.length?`<div class="scope-notice"><b>Verificación de origen:</b> ${tacticalData.warnings.map(escape).join(' · ')}</div>`:''}
+ <div class="tactical-footer">Fuente: Google Drive privado → hoja ${escape(tacticalData.sourceSheet)}, filas 1–${TACTICAL_MAX_ROW} inclusive. B: Integración · D: Estado · E: Dependencia · G: Situación/hitos · H/I/J: Fechas o textos · L: Criticidad y relleno verde · M: Consideraciones. <b>El resaltado verde no modifica la criticidad.</b> El formato condicional que no se exporte como relleno directo podría requerir ajuste del archivo.</div>`;
 }
 
 function groups(){return model?.integrations||[];}
@@ -357,7 +444,7 @@ function removeNote(id){if(!confirm('¿Eliminar esta observación local? No podr
 function exportNotes(){const payload={schema:'pj-observaciones-v2',exportedAt:new Date().toISOString(),source:currentSource,observations:notes};const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='observaciones_integraciones_PJ.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);}
 async function importNotes(file){try{if(file.size>4*1024*1024)throw new Error('El respaldo supera el límite de 4 MB.');const json=JSON.parse(await file.text());const next=mergeObservationBackup(notes,json);if(saveNoteState(next)){render();alertMsg(`Respaldo importado: ${next.length} observaciones disponibles. Se conservaron registros preexistentes.`);}}catch(e){alertMsg('No se pudo importar el respaldo: '+e.message,'error');}}
 
-function render(){refreshSpecialtyUI();if(activeTab==='systems')renderSystems();if(activeTab==='overview')renderOverview();if(activeTab==='integrations')renderIntegrations();if(activeTab==='endpoints')renderEndpoints();if(activeTab==='technical')renderTechnical();}
+function render(){refreshSpecialtyUI();if(activeTab==='tactical')renderTactical();if(activeTab==='systems')renderSystems();if(activeTab==='overview')renderOverview();if(activeTab==='integrations')renderIntegrations();if(activeTab==='endpoints')renderEndpoints();if(activeTab==='technical')renderTechnical();}
 function inspectIntegration(name){integrationFilter=name;systemFilter='';technicalIntegrationFilter='';query='';stateFilter='';equivFilter='';switchTab('endpoints');const ids=(model?.endpoints||[]).filter(e=>norm(e.integration)===norm(name));if(!ids.length)alertMsg(`${name}: no tiene endpoints/operaciones documentados en las hojas de detalle.`, 'error');}
 function showComponents(name){const i=groups().find(x=>norm(x.name)===norm(name));if(!i)return;
  const rows=i.components.map(c=>`<tr><td><strong>${escape(c.component)}</strong><span class="col-secondary">${escape(c.componentType||'Tipo no indicado')}</span></td><td>${statusBadge(c.status)}<span class="col-secondary">${escape(c.rawStatus||'Sin estado')}</span></td><td>${escape(c.owner||'No indicado')}</td><td>${escape(c.attention||'No indicado')}</td><td>${escape(c.dependency||'No indicada')}</td><td>${escape(c.glpi||'—')}</td><td>${c.observationsGTI?`<span class="col-secondary">${escape(trim(c.observationsGTI,160))}</span><span class="col-secondary">Sistemas!N${c.row}</span>`:'—'}</td><td>${c.observationsSoftplan?`<span class="col-secondary">${escape(trim(c.observationsSoftplan,160))}</span><span class="col-secondary">Sistemas!O${c.row}</span>`:'—'}</td><td>Sistemas!${c.row}</td></tr>`).join('');
@@ -396,7 +483,7 @@ function init(){
  el('file-input').addEventListener('change',e=>{loadFile(e.target.files?.[0]);e.target.value='';});
  const drop=el('drop-zone');['dragenter','dragover'].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add('dragging');}));['dragleave','drop'].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove('dragging');}));drop.addEventListener('drop',e=>loadFile(e.dataTransfer?.files?.[0]));
  document.querySelectorAll('.source-tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.source-tab').forEach(b=>b.classList.toggle('active',b===t));el('pane-file').classList.toggle('hidden',t.dataset.source!=='file');el('pane-drive').classList.toggle('hidden',t.dataset.source!=='drive');}));
- el('drive-public').addEventListener('click',loadPublicDrive);el('drive-private').addEventListener('click',loadPrivateDrive);el('auto-refresh').addEventListener('change',configureRefresh);
+ el('drive-public').addEventListener('click',loadPublicDrive);el('tactical-private').addEventListener('click',()=>loadTacticalPrivate());el('tactical-file').addEventListener('change',e=>{loadTacticalFile(e.target.files?.[0]);e.target.value='';});el('drive-private').addEventListener('click',loadPrivateDrive);el('auto-refresh').addEventListener('change',configureRefresh);
  el('drive-url').value=DEFAULT_GOOGLE_URL||sessionStorage.getItem('drive-url')||'';currentDriveUrl=el('drive-url').value;el('auto-refresh').checked=!!DEFAULT_GOOGLE_URL;
  if(PRIVATE_GOOGLE_SOURCE){
   // Seleccionar Google Drive como pestaña inicial y mantener acceso anonimo fuera del flujo.
@@ -409,7 +496,9 @@ function init(){
  refreshSpecialtyUI();
  el('drawer-backdrop').addEventListener('click',closeDrawer);
  document.body.addEventListener('click',e=>{
-  const a=e.target.closest('[data-action]');if(a){const type=a.dataset.action;if(type==='open-import')openImport();else if(type==='tab-integrations')switchTab('integrations');else if(type==='clear-catalog'){catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';render();}else if(type==='tab-systems')switchTab('systems');else if(type==='clear-filters'){query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';page=1;render();}else if(type==='close-drawer')closeDrawer();else if(type==='export-notes')exportNotes();else if(type==='import-notes')el('notes-import').click();return;}
+  const a=e.target.closest('[data-action]');if(a){const type=a.dataset.action;if(type==='open-import')openImport();else if(type==='tab-integrations')switchTab('integrations');else if(type==='tactical-refresh')loadTacticalPrivate();else if(type==='tactical-secondary'){tacticalSecondaryOpen=!tacticalSecondaryOpen;renderTactical();}else if(type==='tactical-clear'){tacticalStateFilter='Todos';tacticalQuery='';renderTactical();}else if(type==='clear-catalog'){catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';render();}else if(type==='tab-systems')switchTab('systems');else if(type==='clear-filters'){query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';page=1;render();}else if(type==='close-drawer')closeDrawer();else if(type==='export-notes')exportNotes();else if(type==='import-notes')el('notes-import').click();return;}
+  const tk=e.target.closest('[data-tactical-status]');if(tk){tacticalStateFilter=tacticalStateFilter===tk.dataset.tacticalStatus?'Todos':tk.dataset.tacticalStatus;renderTactical();return;}
+  const tr=e.target.closest('[data-tactical-toggle]');if(tr){const id=tr.dataset.tacticalToggle;tacticalOpened.has(id)?tacticalOpened.delete(id):tacticalOpened.add(id);renderTactical();return;}
   const catalogRow=e.target.closest('[data-catalog-expand]');if(catalogRow){const n=Number(catalogRow.dataset.catalogExpand);catalogExpanded.has(n)?catalogExpanded.delete(n):catalogExpanded.add(n);render();return;}
   const catalogSystem=e.target.closest('[data-catalog-system]');if(catalogSystem){const id=catalogSystem.dataset.catalogSystem;expandedSystems.add(id);query='';switchTab('systems');return;}
   const catalogEndpoints=e.target.closest('[data-catalog-endpoints]');if(catalogEndpoints){systemFilter=catalogEndpoints.dataset.catalogEndpoints;technicalIntegrationFilter='';integrationFilter='';query='';stateFilter='';equivFilter='';switchTab('endpoints');return;}
@@ -426,7 +515,7 @@ function init(){
   const ex=e.target.closest('[data-export]');if(ex){exportCSV(ex.dataset.export);return;}
   const p=e.target.closest('[data-page]');if(p){page+=p.dataset.page==='next'?1:-1;render();return;}
  });
- document.body.addEventListener('input',e=>{if(e.target.id==='catalog-search'){catalogSearch=e.target.value;const position=e.target.selectionStart;render();const target=el('catalog-search');target?.focus();try{target?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='search-filter'){query=e.target.value;page=1;const start=e.target.selectionStart;render();const next=el('search-filter');next?.focus();try{next?.setSelectionRange(start,start);}catch{}}});
+ document.body.addEventListener('input',e=>{if(e.target.id==='tactical-search'){tacticalQuery=e.target.value;const position=e.target.selectionStart;renderTactical();const input=el('tactical-search');input?.focus();try{input?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='catalog-search'){catalogSearch=e.target.value;const position=e.target.selectionStart;render();const target=el('catalog-search');target?.focus();try{target?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='search-filter'){query=e.target.value;page=1;const start=e.target.selectionStart;render();const next=el('search-filter');next?.focus();try{next?.setSelectionRange(start,start);}catch{}}});
  document.body.addEventListener('change',e=>{if(e.target.id==='specialty-filter'){specialty=e.target.value==='laboral'?'laboral':'todas';page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';technicalFilter='';catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';closeDrawer();refreshSpecialtyUI();render();return;}if(e.target.id==='catalog-observation-filter'){catalogObserved=e.target.value;render();return;}if(e.target.id==='catalog-availability-filter'){catalogAvailability=e.target.value;render();return;}if(e.target.id==='catalog-link-filter'){catalogLinkFilter=e.target.value;render();return;}if(e.target.id==='status-filter'){stateFilter=e.target.value;page=1;render();}if(e.target.id==='equiv-filter'){equivFilter=e.target.value;page=1;render();}if(e.target.id==='integration-filter'){integrationFilter=e.target.value;page=1;render();}if(e.target.id==='system-filter'){systemFilter=e.target.value;integrationFilter='';technicalIntegrationFilter='';page=1;render();}if(e.target.id==='technical-integration-filter'){technicalIntegrationFilter=e.target.value;integrationFilter='';page=1;render();}if(e.target.id==='technical-filter'){technicalFilter=e.target.value;render();}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeImport();}});
  render();

@@ -1,71 +1,81 @@
-# Tablero de Integraciones PJ · V1.8.1 — Desarrollo y validación documentada
+# Tablero de Integraciones PJ · V1.9.1 · Resumen táctico
 
-## Objetivo
+## Propósito
 
-Se mantiene la V1.7 y se incorpora al filtro **Especialidad → Laboral** un panel con dos indicadores **separados** y un apartado desplegable «¿Cómo se calculan estos indicadores?».
+Esta evolución incorpora **Resumen táctico**, inspirado en la lámina «Status Integraciones» de la presentación *STEJENP - Integraciones Especialidad Laboral*. No sustituye el Resumen ejecutivo ni altera el catálogo fijo de Laboral.
 
-**Indicador 1: Avance estimado de desarrollo**
-- Fuente: hoja `Sistemas` del Excel técnico de SOFTPLAN, cargado desde Google Drive privado o por archivo.
-- Unidad: componentes técnicos únicos de los sistemas vinculados al catálogo fijo de Laboral. PIDE se contabiliza una sola vez aunque CONADIS y SUNAT lo compartan.
-- Se usan las etapas existentes y sus *pesos de referencia propios del tablero*:
+### Fuentes independientes
 
-  | Estado | Peso |
-  |---|---:|
-  | Pendiente | 0 % |
-  | En análisis | 20 % |
-  | En revisión | 35 % |
-  | En desarrollo | 55 % |
-  | Enviado a calidad | 80 % |
-  | No requiere modificación | 100 % |
+1. **Seguimiento técnico**: `SOFTPLAN - INTEGRACIONES PJ` en Google Drive privado (`1GWZBqm...`), configuración existente. Alimenta estados técnicos, sistemas, endpoints, observaciones GTI/SOFTPLAN y cálculos de desarrollo/validación.
+2. **Seguimiento táctico**: hoja **`Seguimiento`** del libro privado (`1azR7BtPnoKM6H-2ADC5t9Pur04pFmD1y`). Se utiliza únicamente para la nueva pestaña. **No se mezclan automáticamente los estados tácticos con los estados técnicos**, porque sus metodologías son diferentes.
+3. **Catálogo Laboral**: las 36 integraciones de `Lista_Integraciones.xlsx`, Sheet2, siguen fijas en `catalogo-fijo.js`.
 
-- Fórmula: `REDONDEAR(SUMA(n.º componentes por estado × peso) / n.º componentes con estado evaluable, 0)`.
-- Se excluyen los componentes sin estado evaluable, se informa su cantidad y **no se les asigna 0 %**.
-- No es un porcentaje certificado de desarrollo, ni acredita que pruebas o despliegues hayan concluido.
+Los archivos privados se leen desde el navegador del usuario autorizado y no se incorporan al repositorio ni se envían a un backend propio. El `client_id` público OAuth se reutiliza para ambas fuentes; no incluir un `client_secret`.
 
-**Indicador 2: Validación con conformidad documentada**
-- Fuente: **hoja opcional** `Validaciones` o `Validaciones Laboral` en el MISMO Excel técnico de Google.
-- El archivo técnico compartido inicialmente no contiene una hoja con ese registro, así que el tablero muestra **N/D** (no calculable), **no** un 0 % que pueda interpretarse como ausencia de pruebas reales.
-- Denominador fijo: 36 integraciones del catálogo de Laboral (`Lista_Integraciones.xlsx`, Sheet2, incorporado como `catalogo-fijo.js`).
-- Numerador: integraciones que cumplan las **cuatro condiciones**: resultado de pruebas aprobado, referencia de evidencia de pruebas, conformidad otorgada, referencia de evidencia de conformidad.
-- Fórmula una vez exista la hoja: `REDONDEAR(integraciones acreditadas / 36 × 100, 0)`.
-- No se considera evidencia: «Enviado a calidad», datos/ambientes de prueba, disponibilidad, enlaces a análisis técnico, referencias vacías o «NO APLICA».
-- Una hoja presente pero sin integraciones acreditadas mostraría `0 %` **de conformidades acreditadas por la fuente**, sin afirmar que no se hayan ejecutado pruebas.
+## Inicio rápido y sincronización
 
-### Formato opcional de «Validaciones»
+- Local: `python -m http.server 8080` y abrir `http://localhost:8080`.
+- Vercel: desplegar los archivos estáticos como la V1.8.1. Comprobar que el dominio exacto de Vercel siga autorizado en Google Cloud.
+- Iniciar sesión con la cuenta que **tenga acceso a ambos archivos** y esté autorizada en OAuth si el cliente se encuentra en modo de pruebas.
+- Elegir **Fuentes → Autorizar y leer privado** para la carga técnica: al completarse, se intenta actualizar el táctico automáticamente utilizando el mismo token.
+- También puede abrirse directamente **Resumen táctico → Actualizar resumen táctico**, incluso sin haber cargado la fuente técnica.
+- El botón superior **Actualizar Google** vuelve a leer el archivo técnico y, a continuación, el táctico. El botón **Actualizar táctico** solo actualiza el segundo archivo.
+- **Fuentes → Importar respaldo táctico .xlsx** permite probar sin Drive. No se almacena como catálogo fijo.
+- Si no se actualiza el segundo documento por permisos, el primero continúa funcionando. La vista táctico muestra el error en su propio panel y conserva temporalmente los últimos datos de la sesión.
 
-Se puede copiar `plantilla_validaciones_laboral.csv` a Google Sheets como **una nueva pestaña** llamada `Validaciones` dentro del documento técnico privado. Mantener exactamente estas columnas (sin importar mayúsculas ni tildes):
+## Asignación de columnas: hoja Seguimiento
 
-`Integración`, `Resultado de pruebas`, `Evidencia de pruebas`, `Conformidad`, `Evidencia de conformidad`
+| Columna | Uso |
+|---|---|
+| B | Integración Laboral |
+| D | Estado táctico: `Validado`, `Validada`, `Por validar`, `En Pruebas`, `En Desarrollo` |
+| E | Área/entidad de dependencia |
+| G | Estado situacional/hitos; se conserva texto completo y saltos de línea |
+| H | Cierre desarrollo; fecha o texto libre |
+| I | Cierre pruebas SOFTPLAN/GTI; fecha, rango o texto |
+| J | Validación con GSJ; fecha o texto |
+| L | Criticidad: **Alta** implica primer plano, cualquier otro valor o vacío implica no priorizada. Fondo verde directo = distintivo **Destacada en origen**, separado de la criticidad |
+| M | Consideraciones |
 
-- `Resultado de pruebas`: `APROBADA` / `APROBADO` (u `CONCLUIDA APROBADA`).
-- `Evidencia de pruebas`: identificador de acta, ticket, enlace a documento de resultados u otra referencia comprobable.
-- `Conformidad`: `CONFORME` / `APROBADA` / `APROBADO` / `CONFORMIDAD OTORGADA`.
-- `Evidencia de conformidad`: enlace, acta o código documental verificable.
-- `Integración`: nombre como figura en el catálogo fijo. Se evita asignar evidencias a otra integración por similitud de nombres.
-- Los registros duplicados no se suman dos veces y se advierten en la leyenda.
+## Comportamiento del resumen
 
-**Seguridad:** el tablero muestra el *estado de acreditación* y la fila de origen; no publica el contenido de documentos de prueba ni secretos. La hoja sigue estando protegida por los permisos OAuth del Excel privado. Las evidencias no se editan en el navegador; se actualizan en el libro de Google y se pulsa «Actualizar Google».
+- Los cuatro KPI y columnas principales muestran **solo las integraciones con criticidad Alta**, divididas en Validada, Por validar, En pruebas y En desarrollo.
+- Estados `Validado` y `Validada` se agrupan como **Validada**.
+- La sección secundaria **Integraciones no priorizadas** despliega los registros cuya columna L no dice `Alta`, sin eliminarlos.
+- La marca de relleno verde se calcula a partir del formato de celda **L** del archivo Excel exportado de Drive; se presenta incluso en integraciones no priorizadas. **No significa validación, conformidad ni aprobación**.
+- Pulsar una integración presenta dependencia, historial G completo, fechas H/I/J y consideraciones M, con la fila del Excel para auditoría.
+- Permite búsqueda y filtro por estado mediante KPI, sin modificar los datos.
+- Muestra advertencia si el número de filas del seguimiento difiere de las 36 integraciones del catálogo fijo. No se infiere cobertura por nombre ni se fusionan registros homónimos.
 
-## Prueba local y despliegue
+### Limitación sobre el verde en Google Sheets
 
-1. Ejecutar `python -m http.server 8080` dentro de la carpeta del proyecto.
-2. Abrir `http://localhost:8080` y autorizar la cuenta de Google mediante **Fuentes → Google Drive → Autorizar y leer privado**.
-3. En **Especialidad**, seleccionar **Laboral** y abrir el panel «¿Cómo se calculan estos indicadores?».
-4. Comprobar los subtotales por etapa, los componentes sin clasificación y el origen de la validación.
-5. Desplegar el mismo directorio a GitHub/Vercel. Conserva `config.js` con **solo** el Client ID, nunca el Client Secret.
+El lector analiza el **relleno de celda directo** exportado como XLSX (estilos `fillId` de `styles.xml`). Los colores generados **solo por formato condicional**, pero no materializados como relleno directo al exportar, pueden no detectarse. La aplicación avisa si encuentra reglas de formato condicional. Para un semáforo institucional robusto, se recomienda incorporar en el futuro una columna explícita de marca o una lectura de formato efectivo con Google Sheets API, debidamente autorizada.
 
-**No cambian:** OAuth privado, catálogo fijo de 36 integraciones, filtro Todas/Laboral, observaciones GTI/SOFTPLAN, endpoints, equivalencias y documentación técnica.
+### Fechas
 
-## Historial
+Las fechas numéricas de Excel en H/I/J se muestran como `dd/mm/aaaa` cuando se identifican como fechas; el texto libre y los rangos quedan sin cambios. **No** se interpreta un rango como una fecha puntual ni se presume cumplimiento.
 
-- **V1.4:** base estable histórica.
-- **V1.5.1:** lectura OAuth privada.
-- **V1.6:** catálogo fijo Laboral.
-- **V1.7:** filtro Todas/Laboral y avance estimado por etapas.
-- **V1.8:** indicadores separados de desarrollo y validación acreditada, con fórmula auditada en pantalla.
+## Validaciones realizadas
 
-## V1.8.1 — Fórmula del desarrollo sin inferencias
+- Verificación sintáctica con `node --check` de los módulos JavaScript.
+- Pruebas unitarias del parser táctico con filas de muestra: cuatro estados, criticidad Alta/no priorizada, fechas textuales y numéricas, lectura de bandera verde.
+- La prueba de navegador local fue bloqueada por política del entorno (`ERR_BLOCKED_BY_ADMINISTRATOR`), por lo que **queda pendiente verificar visualmente en Chrome/Edge y contrastar los conteos reales con el documento privado**.
+- Ningún número de la diapositiva se deja fijo; el conteo de estados procede exclusivamente de la hoja táctica cargada.
 
-Se alinearon la fórmula y los nombres de las columnas visibles: **N.º de componentes (A)**, **Avance asignado (B)** y **Aporte (C = A × B)**. En cada fila aparece la operación numérica completa, por ejemplo `7 × 55 = 385`, donde 55 es el valor numérico de 55 %.
+## Versiones
 
-Tres pasos calculados dinámicamente explican el promedio: (1) sumar los aportes de C, (2) sumar los componentes de A y (3) dividir los resultados y redondear. En el Excel de referencia: `2.380 ÷ 44 = 54,09 % → 54 %`. Los cuatro componentes sin estado evaluable permanecen excluidos y visibles en la advertencia. No se modifica la lógica de cálculo ni la acreditación de validaciones.
+- **V1.4**: base estable histórica, comentarios visibles GTI/SOFTPLAN.
+- **V1.8.1**: base funcional de esta evolución, indicadores auditables.
+- **V1.9**: incorporación del Resumen táctico, segunda fuente privada y distinción de criticidad y relleno verde.
+
+## Correcciones V1.9.1
+
+- La lectura de la hoja `Seguimiento` está limitada estrictamente a las **filas 1 a 36, inclusive**. Los registros posteriores no se importan ni se cuentan, independientemente de las filas disponibles en el archivo.
+- Al expandir una integración, las etiquetas son únicamente **Dependencia**, **Cierre desarrollo**, **Cierre pruebas SOFTPLAN / GTI**, **Validación GSJ**, **Estado situacional / hitos** y **Consideraciones**. No se anexan letras de columna. La fila de origen se conserva para auditoría.
+- En H, I y J, la aparición de **«Por informar»** o **«Revisión con…»**, sin importar mayúsculas ni acentos, genera una **alerta roja visible incluso con la integración contraída**. Al expandir, se destacan los campos afectados y se explica la causa.
+- Las alertas son documentales, no una deducción automática de incumplimiento o de fechas vencidas. La marca verde de la fuente permanece independiente de la alerta roja.
+- El resumen contabiliza cuántos registros contienen alertas de fecha, tanto en las integraciones priorizadas como en las no priorizadas.
+
+### Pruebas de regresión
+
+En la carpeta del proyecto, ejecuta `node tests/tactical.test.mjs`. Este test usa datos ficticios, no consulta Google y valida el límite de filas, los casos de alerta, el conteo y la separación por criticidad. Para comprobar los datos reales, abre la V1.9.1, autoriza la cuenta de Google y actualiza la fuente táctica privada.
