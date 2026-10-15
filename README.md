@@ -1,4 +1,4 @@
-# Tablero de Integraciones PJ · V1.9.1 · Resumen táctico
+# Tablero de Integraciones PJ · V1.9.2 · Resumen táctico y clasificación
 
 ## Propósito
 
@@ -79,3 +79,36 @@ Las fechas numéricas de Excel en H/I/J se muestran como `dd/mm/aaaa` cuando se 
 ### Pruebas de regresión
 
 En la carpeta del proyecto, ejecuta `node tests/tactical.test.mjs`. Este test usa datos ficticios, no consulta Google y valida el límite de filas, los casos de alerta, el conteo y la separación por criticidad. Para comprobar los datos reales, abre la V1.9.1, autoriza la cuenta de Google y actualiza la fuente táctica privada.
+
+
+## V1.9.2 · Filtros tácticos por severidad, ciclo y tipo
+
+Dentro de **Resumen táctico** aparece el selector **Clasificar integraciones**. Sus opciones se calculan exclusivamente con la hoja `Seguimiento` (filas 1–36):
+
+| Opción | Regla exacta |
+|---|---|
+| Todas las integraciones | Todos los registros tácticos válidos |
+| Severidad Crítica | L = `Alta` y relleno de celda L verde |
+| Severidad Alta | L = `Alta` y **sin** relleno verde de celda L |
+| Ciclo 2 | D = `Ciclo 2` |
+| Ciclo 2/3 | D = `Ciclo 2/3` |
+| Funcionalidad para Ciclo 1 | D = `Funcionalidad para Ciclo 1` |
+| Integraciones manuales | D = `manual` |
+| No aplica integración | D = `No Aplica Integracion` |
+
+Las comparaciones de texto ignoran mayúsculas, espacios exteriores y acentos. **Crítica y Alta son excluyentes**, por lo que una integración Crítica no se duplica al filtrar Alta. Los filtros de ciclo y tipo se basan independientemente en D; un registro con D = Ciclo 2 y L = Alta podría aparecer en ambos filtros correspondientes. Un valor `Ciclo 2/3` no se confunde con `Ciclo 2`.
+
+La vista **Todas** conserva el esquema original: cuatro bloques por estado para las prioritarias y lista secundaria de no priorizadas. Los filtros **Crítica** y **Alta** conservan los cuatro bloques, mostrando solo los registros correspondientes. Los filtros por ciclo y tipo muestran directamente una lista con estado textual original, dependencia, hitos, fechas y consideraciones, aunque D ya no sea uno de los cuatro estados. La búsqueda y los detalles desplegables permanecen disponibles. El botón **Limpiar filtros** restablece la categoría, estado y búsqueda.
+
+**Limitación documentada:** si la celda L parece verde en Google Sheets debido exclusivamente a formato condicional y ese color no aparece como relleno directo en el XLSX exportado, no podrá clasificarse como Crítica. En ese caso el registro `Alta` aparecerá en la clase Alta y se indicará la posible limitación cuando el libro incluya formato condicional. Para auditar la fuente se conserva el nombre de hoja y fila.
+
+### Pruebas V1.9.2
+
+Ejecutar desde la carpeta:
+
+```sh
+node tests/tactical.test.mjs
+node tests/tactical-categories.test.mjs
+```
+
+Estas pruebas utilizan registros ficticios (no credenciales ni archivos privados) y verifican el rango hasta fila 36, reglas de verde, ocho opciones incluyendo Todas, exclusividad de severidades, variantes de escritura y distinción entre ciclos. La ejecución visual automatizada en Chromium quedó bloqueada por política del entorno; se recomienda una última inspección de interfaz al cargar el Google Sheets privado real.

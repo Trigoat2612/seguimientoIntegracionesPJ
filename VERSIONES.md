@@ -9,3 +9,5 @@
 - **V1.9 (por validar)** · Resumen táctico por criticidad Alta/no priorizada, segunda fuente de Google Drive y lectura de columna L con relleno verde.
 
 - **V1.9.1**: límite de lectura Seguimiento hasta fila 36; fichas sin referencias de columna; alertas rojas por fechas «Por informar» o «Revisión con…».
+
+- **V1.9.2**: filtro táctico Todas / Crítica / Alta / Ciclo 2 / Ciclo 2/3 / Funcionalidad para Ciclo 1 / Manual / No aplica integración; agrupación dinámica, contador por categoría, sin duplicar críticas en altas. No altera OAuth, Excel técnico ni alertas de fecha.

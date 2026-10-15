@@ -244,3 +244,26 @@
 .tactical-date-field-alert{border:1px solid #f0b0b7;background:#fff1f2;border-radius:5px;padding:6px 8px}
 .tactical-date-field-alert b,.tactical-date-field-alert p{color:#972032}
 .tactical-date-count{color:#a61e2d}
+
+/* V1.9.2: clasificaciones tácticas por severidad, ciclo y tipo. */
+.tactical-filter-bar{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:17px 21px;margin:14px 0 7px}
+.tactical-filter-field{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.tactical-filter-field label{font-weight:750;color:#274860;font-size:12px}
+.tactical-filter-field select{min-width:290px;max-width:100%;width:min(385px,100%);background:#fff;color:#15344c;font-size:12px}
+.tactical-filter-summary{font-size:11px;color:#667e90;white-space:nowrap}
+.tactical-filter-summary strong{color:#0e6387;font-size:15px}
+.tactical-filter-explanation{font-size:10.5px;line-height:1.6;color:#537087;margin:0 0 21px;padding:0 4px}
+.tactical-severity-row{grid-column:1;display:flex;gap:5px;flex-wrap:wrap}
+.tactical-severity-row:empty{display:none}
+.tactical-severity{display:inline-flex;width:max-content;border-radius:3px;padding:2px 6px;font-size:9px;line-height:1.4;font-weight:800;letter-spacing:.015em}
+.tactical-severity-critical{color:#972135;border:1px solid #fac2ca;background:#fff0f1}
+.tactical-severity-high{color:#99531b;border:1px solid #f1d0a3;background:#fff6e8}
+.tactical-category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.tactical-category-card{border:1px solid #dfebf1;background:#fff;border-radius:8px;padding:11px 12px;min-width:0;box-shadow:0 1px 5px #12364c0a}
+.tactical-category-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.tactical-raw-state{font-size:10px;font-weight:780;border-radius:5px;padding:4px 7px;background:#eef5fa;color:#326081}
+.tactical-category-ref{font-size:10px;color:#8196a5}
+.tactical-category-card .tactical-item{border-bottom:0}
+.tactical-category-empty{grid-column:1/-1;border:1px dashed #d9e5ec;padding:20px;border-radius:6px}
+@media(max-width:1160px){.tactical-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.tactical-category-grid{grid-template-columns:1fr}.tactical-filter-bar{align-items:stretch;flex-direction:column}.tactical-filter-summary{white-space:normal}.tactical-filter-field select{min-width:0;width:100%}}

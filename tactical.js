@@ -2,8 +2,40 @@
 export const TACTICAL_STATES=['Validada','Por validar','En pruebas','En desarrollo'];
 // El seguimiento táctico autorizado abarca solo las filas 1 a 36, inclusive.
 export const TACTICAL_MAX_ROW=36;
+/** Clasificaciones del filtro: los valores de D se comparan exactamente, no por subcadenas. */
+export const TACTICAL_CATEGORIES=Object.freeze([
+ {id:'todas',label:'Todas las integraciones'},
+ {id:'critica',label:'Severidad Crítica'},
+ {id:'alta',label:'Severidad Alta'},
+ {id:'ciclo2',label:'Ciclo 2'},
+ {id:'ciclo23',label:'Ciclo 2/3'},
+ {id:'funcionalidad1',label:'Funcionalidad para Ciclo 1'},
+ {id:'manual',label:'Integraciones manuales'},
+ {id:'noaplica',label:'No aplica integración'}
+]);
+
 const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 const clean=v=>String(v??'').replace(/\u0000/g,'').trim();
+/** Crítica = Alta con relleno verde; Alta = Alta sin relleno verde.
+ * Las categorías de ciclo/tipo son independientes y dependen del valor completo de D. */
+export function tacticalMatchesCategory(entry,category='todas'){
+ const state=norm(entry.statusRaw||'').replace(/\s+/g,' ');
+ switch(category){
+ case 'todas':return true;
+ case 'critica':return !!entry.high&&!!entry.green;
+ case 'alta':return !!entry.high&&!entry.green;
+ case 'ciclo2':return state==='ciclo 2';
+ case 'ciclo23':return /^ciclo 2\s*\/\s*3$/.test(state);
+ case 'funcionalidad1':return state==='funcionalidad para ciclo 1';
+ case 'manual':return state==='manual';
+ case 'noaplica':return state==='no aplica integracion';
+ default:return false;
+ }
+}
+export function tacticalCategoryCounts(entries){
+ return Object.fromEntries(TACTICAL_CATEGORIES.map(c=>[c.id,(entries||[]).filter(e=>tacticalMatchesCategory(e,c.id)).length]));
+}
+
 export function tacticalState(value){
  const v=norm(value).replace(/\s+/g,' ');
  if(/^(validado|validada)(\b|$)/.test(v))return 'Validada';
