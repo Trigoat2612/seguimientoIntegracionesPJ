@@ -1,4 +1,44 @@
-# Tablero de Integraciones PJ · V1.9.7 · Entidad desde la columna E en PowerPoint
+# Tablero de Integraciones PJ · V1.11.0 — Flujo de actividades por vía
+
+> **Base estable preservada: V1.10.3** (pendientes alineados en PowerPoint). Esta V1.11.0 es una evolución funcional que no altera la V1.10.3.
+
+## Nueva pestaña: Flujo de actividades
+
+Fuente: **mismo libro táctico privado** de Google Drive, hoja `EtapaActividadIntegracion`. No hay que agregar credenciales OAuth ni fuentes adicionales.
+
+| Columna | Interpretación exacta |
+|---|---|
+| A | Vía procesal |
+| B | Paso del flujo, en el orden de aparición del Excel |
+| C | Etapa de la actividad |
+| D | Actividad del paso |
+| E | Integración asociada (opcional). Varias integraciones pueden escribirse en líneas separadas o separadas por `;`. |
+
+La hoja **Seguimiento**, del mismo libro, suministra el estado y la criticidad de las integraciones. Una integración se clasifica **Lista** solo si está en estado `Validada/Validado`. Cualquier otro estado documentado se clasifica **Pendiente**. Una integración que no se corresponde con Seguimiento se muestra como **Sin correspondencia**, pendiente de verificar, nunca como lista.
+
+### Visualización
+
+1. Abre **Flujo de actividades** desde el menú lateral y pulsa **Actualizar desde Google** o importa el respaldo táctico .xlsx desde **Fuentes**.
+2. Selecciona **Vía** y **Severidad** (Todas, Crítica, Alta, No priorizadas o Sin correspondencia).
+3. Despliega un **paso del flujo** para ver las actividades y su etapa (columna C).
+4. Despliega una **actividad** para ver integraciones **listas** y **pendientes** con su estado y dependencia.
+5. Las actividades sin integración en E siguen apareciendo y se identifican expresamente: no cuentan como pendientes.
+
+El resumen superior muestra solo dos indicadores para cada vía y filtro: **Integraciones listas** e **Integraciones pendientes**, contando cada integración una sola vez aunque intervenga en varias actividades. El filtro de severidad afecta solo a las integraciones: los pasos y actividades mantienen la estructura completa del flujo.
+
+Se admiten celdas fusionadas exportadas con A, B, C o D vacías en filas de continuación: el lector hereda el contexto de la última fila válida sin trasladar etapas o actividades entre pasos diferentes. No se ordenan los pasos alfabéticamente, se conserva la secuencia del Excel.
+
+### Comprobaciones y limitaciones
+
+- Prueba del lector A–E, continuaciones, actividades sin integración, repetición de actividades, filtros y clasificación: `node --experimental-default-type=module tests/actividad-flujo.test.mjs`.
+- Las pruebas originales de PowerPoint por vía y resumen táctico se mantienen y han sido ejecutadas satisfactoriamente.
+- La hoja privada real `EtapaActividadIntegracion` no fue leída en este entorno; no se confirman nombres ni cantidades reales. Si cambian las columnas A–E, deberá ajustarse el parser. El tablero mostrará un error si la hoja falta o carece de registros legibles.
+- La prueba visual con Chromium quedó bloqueada por la restricción del entorno a localhost; se requiere validar en Chrome/Edge tras cargar el documento privado.
+- Los datos del libro se procesan en el navegador. El Excel privado no se incluye dentro del proyecto ni se publica como JSON.
+
+---
+
+# Historial y documentación técnica de versiones anteriores
 
 ## Propósito
 
@@ -221,3 +261,16 @@ No se ha podido contrastar el mapeo con las filas reales del Google Sheets priva
 En las diapositivas de **Integraciones por vía**, todos los títulos «Integraciones Pendientes» de una misma fila de etapas se muestran a la misma altura. Se alinea también su separador horizontal. La vista web y los datos fuente no cambian.
 
 Prueba: `node tests/via-pending-alignment.test.mjs`.
+
+
+## V1.11.1 · Flujo de actividades en cuadrícula
+- Se elimina el resumen superior de integraciones listas y pendientes en la vista Flujo de actividades.
+- Cada panel de paso muestra el rótulo “Paso N.° X”.
+- Los pasos se distribuyen en cuadrícula responsive, en lugar de una columna vertical.
+
+
+## V1.11.2 · Flujo refinado
+- Se unifica el color visual de todos los pasos del flujo.
+- La numeración de pasos se muestra como enteros.
+- Se muestran etiquetas de etapa dentro de cada caja de paso.
+- Las integraciones listas y pendientes se presentan como listados verticales, no como paneles contiguos.

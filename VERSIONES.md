@@ -84,3 +84,28 @@
 - La posición deja de depender del volumen de integraciones listas de cada etapa.
 - Se conservan las listas originales, los dos indicadores globales, los filtros, la secuencia de etapas y el fondo institucional.
 - Se agrega la prueba de regresión `tests/via-pending-alignment.test.mjs` para presentaciones de una y dos filas de etapas.
+
+
+## V1.11.0 · Nueva vista de flujo por actividades
+
+- La V1.10.3 queda identificada como **base estable**, preservada sin cambios.
+- Se agrega la pestaña **Flujo de actividades** alimentada por `EtapaActividadIntegracion`, columnas A (Vía), B (Paso), C (Etapa), D (Actividad) y E (Integración opcional).
+- Navegación por paneles desplegables **Vía → Paso → Actividad → Integraciones**.
+- Las integraciones se clasifican en **Listas** y **Pendientes** utilizando únicamente el estado de `Seguimiento`, con filtros de severidad heredados.
+- Actividades sin integración E permanecen visibles, sin contabilizarse como pendientes.
+- Totales únicos por vía, sin duplicar una integración asociada a varios pasos o actividades.
+- Se conserva todo el flujo funcional y PowerPoint por vías de V1.10.3.
+- Prueba específica: `tests/actividad-flujo.test.mjs`.
+
+
+## V1.11.1 · Flujo de actividades en cuadrícula
+- Se elimina el resumen superior de integraciones listas y pendientes en la vista Flujo de actividades.
+- Cada panel de paso muestra el rótulo “Paso N.° X”.
+- Los pasos se distribuyen en cuadrícula responsive, en lugar de una columna vertical.
+
+
+## V1.11.2 · Flujo refinado
+- Se unifica el color visual de todos los pasos del flujo.
+- La numeración de pasos se muestra como enteros.
+- Se muestran etiquetas de etapa dentro de cada caja de paso.
+- Las integraciones listas y pendientes se presentan como listados verticales, no como paneles contiguos.
