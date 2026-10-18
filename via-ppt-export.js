@@ -77,17 +77,22 @@ function renderSingle(pptx,bg,via,severity){
   rect(slide,pptx,px,py,width,panelH,C.white);
   rect(slide,pptx,px,py,width,0.07,accent,accent);
   text(slide,stages[i].name,px+0.12,py+0.16,width-0.24,0.28,{fontSize:12.6,bold:true,fit:'shrink',align:'center'});
-  const listTop=py+0.52,listHeight=panelH-0.55;
+  const listTop=py+0.52;
   const stage=stages[i];
-  const readyWeight=Math.max(1,stage.ready.length),pendingWeight=Math.max(1,stage.pending.length);
-  const ratio=Math.min(0.68,Math.max(0.34,readyWeight/(readyWeight+pendingWeight)));
-  const rH=listHeight*ratio,pH=listHeight-rH;
+  // Divisor compartido por todas las etapas de una misma fila del PowerPoint.
+  // Nunca depende de cuántas integraciones listas tenga cada etapa: así el
+  // encabezado «Integraciones Pendientes» y su separador quedan alineados.
+  // En una cuadrícula de dos filas se usa una división proporcional compacta.
+  const pendTop=py+(rows===1?2.83:1.17);
+  const readyListTop=listTop+0.28;
+  const readyListHeight=Math.max(0.13,pendTop-readyListTop-0.12);
+  const pendingListTop=pendTop+0.28;
+  const pendingListHeight=Math.max(0.12,py+panelH-pendingListTop-0.12);
   text(slide,'Integraciones Listas',px+0.14,listTop,width-0.26,0.23,{fontSize:11.3,bold:true,color:C.green});
-  drawList(slide,pptx,stage.ready,px+0.16,listTop+0.28,width-0.29,Math.max(0.14,rH-0.33),accent,severity==='critica');
-  const pendTop=listTop+rH+0.04;
+  drawList(slide,pptx,stage.ready,px+0.16,readyListTop,width-0.29,readyListHeight,accent,severity==='critica');
   slide.addShape(pptx.ShapeType.line,{x:px+0.14,y:pendTop-0.05,w:width-0.28,h:0,line:{color:C.border,pt:0.7}});
   text(slide,'Integraciones Pendientes',px+0.14,pendTop,width-0.26,0.23,{fontSize:11.3,bold:true,color:C.orange});
-  drawList(slide,pptx,stage.pending,px+0.16,pendTop+0.28,width-0.29,Math.max(0.12,pH-0.33),accent,severity==='critica');
+  drawList(slide,pptx,stage.pending,px+0.16,pendingListTop,width-0.29,pendingListHeight,accent,severity==='critica');
  }
  text(slide,`Fuente: IntegracionesEtapa y Seguimiento · Severidad: ${severity==='todas'?'Todas':severity} · Vía: ${via.name} · Totales por integración única`,
   0.42,6.51,12.25,0.16,{fontSize:7.2,color:C.muted,fit:'shrink'});

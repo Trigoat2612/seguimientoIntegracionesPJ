@@ -214,3 +214,10 @@ No se ha podido contrastar el mapeo con las filas reales del Google Sheets priva
 - Cada integración se contabiliza una sola vez en esos totales aunque aparezca en distintas etapas. Las listas continúan mostrando su ubicación por etapa.
 - En la presentación de PowerPoint por vía se utilizan los mismos dos totales globales y se eliminan los contadores de las etapas; se conserva una diapositiva por vía y el detalle de las listas.
 - Los datos siguen procediendo de las pestañas **IntegracionesEtapa** y **Seguimiento**. No se modifican OAuth ni el catálogo fijo.
+
+
+## V1.10.3: Alineación de integraciones pendientes en PowerPoint
+
+En las diapositivas de **Integraciones por vía**, todos los títulos «Integraciones Pendientes» de una misma fila de etapas se muestran a la misma altura. Se alinea también su separador horizontal. La vista web y los datos fuente no cambian.
+
+Prueba: `node tests/via-pending-alignment.test.mjs`.

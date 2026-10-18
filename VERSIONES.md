@@ -76,3 +76,11 @@
 - Se ordena «Conflicto de autoridad»: Recepción antes de Trámite.
 - Se eliminan cantidades repetidas en los encabezados de las etapas web y PowerPoint.
 - Se exponen únicamente dos totales de integraciones únicas: listas y pendientes, para la vía y filtro de severidad seleccionados.
+
+
+## V1.10.3 · Encabezados de pendientes alineados
+
+- En el PowerPoint de **Integraciones por vía**, la línea divisoria y el título **«Integraciones Pendientes»** se ubican en una altura común para todas las etapas de una misma fila.
+- La posición deja de depender del volumen de integraciones listas de cada etapa.
+- Se conservan las listas originales, los dos indicadores globales, los filtros, la secuencia de etapas y el fondo institucional.
+- Se agrega la prueba de regresión `tests/via-pending-alignment.test.mjs` para presentaciones de una y dos filas de etapas.
