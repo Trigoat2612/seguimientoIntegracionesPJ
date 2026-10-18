@@ -267,3 +267,59 @@
 .tactical-category-empty{grid-column:1/-1;border:1px dashed #d9e5ec;padding:20px;border-radius:6px}
 @media(max-width:1160px){.tactical-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:780px){.tactical-category-grid{grid-template-columns:1fr}.tactical-filter-bar{align-items:stretch;flex-direction:column}.tactical-filter-summary{white-space:normal}.tactical-filter-field select{min-width:0;width:100%}}
+
+/* V1.10 - Vías procesales y etapas */
+.via-heading{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:22px 25px;margin-bottom:16px}
+.via-heading h2{margin:5px 0;font-size:21px;color:#173b59}.via-heading p{font-size:11px;color:#7589a0;line-height:1.65;max-width:550px}
+.via-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px}.via-controls{display:flex;gap:14px;align-items:end;flex-wrap:wrap;padding:16px 20px;margin-bottom:14px}
+.via-controls label{display:flex;flex-direction:column;gap:8px;font-size:11px;font-weight:800;color:#365473;min-width:220px}
+.via-controls select{width:100%;min-width:190px;max-width:340px;background:#fff}.via-summary{margin-left:auto;display:flex;align-items:center;gap:13px;flex-wrap:wrap;font-size:12px;color:#8794a6}
+.via-summary strong:first-child{color:#277847}.via-summary strong:nth-child(2){color:#bb651f}
+.via-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0}
+.via-stage-card{border:1px solid #dfe6ee;background:white;border-radius:8px;overflow:hidden;border-top:5px solid var(--via-accent);min-width:0}
+.via-stage-header{padding:14px;display:grid;grid-template-columns:60px 1fr;align-items:center;gap:6px;border-bottom:1px solid #e5e9ef}
+.via-stage-header h3{color:#1f3147;font-size:13px;margin:0;overflow-wrap:anywhere}.via-stage-header small{font-size:10px;color:#7d91a6;grid-column:2}
+.via-stage-count{grid-row:span 2;display:flex;flex-direction:column;gap:1px;color:var(--via-accent)}
+.via-stage-count strong{font-size:30px}.via-stage-count span{font-size:9px;color:#8496aa}
+.via-stage-content{padding:13px;display:flex;flex-direction:column;gap:14px}.via-stage-content section+section{border-top:1px solid #e6ecf1;padding-top:12px}
+.via-stage-heading{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#214d3b;padding-bottom:9px;border-bottom:1px solid #e2e9ee}
+.via-stage-heading span{color:#2d815a}.via-stage-heading.via-pending-title{color:#a95f28}.via-stage-heading.via-pending-title span{color:#ad6727}
+.via-item-list{list-style:none;margin:0;padding:10px 0 0;display:flex;flex-direction:column;gap:8px}
+.via-item{border-left:3px solid var(--via-accent);padding:5px 0 5px 9px;font-size:11px;line-height:1.45;color:#23384e;overflow-wrap:anywhere}
+.via-item-meta{display:block;font-size:9px;color:#8498ab;margin-top:4px}
+.via-item.via-unlinked{border-left-color:#c58c44;background:#fff8eb;padding-right:4px}
+.via-list-empty{font-size:10px;font-style:italic;color:#95a1ad;margin:12px 0 0}
+.via-warning{margin:10px 0;padding:11px 15px;background:#fff8eb;border-left:3px solid #d99b39;color:#9b611b;font-size:11px;border-radius:5px}
+.via-empty-panel{padding:32px}.via-empty-panel h2{font-size:20px;margin:8px 0}.via-empty-panel p{font-size:12px;line-height:1.7;color:#697e91;max-width:720px}
+.via-footnote{font-size:10px;color:#8497aa;line-height:1.6}
+@media(max-width:1300px){.via-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.via-grid{grid-template-columns:1fr}.via-heading{flex-direction:column;align-items:start}.via-controls{align-items:stretch}.via-summary{margin-left:0}}
+
+/* V1.10.1: diagnóstico y corrección de correspondencias de IntegracionesEtapa */
+.via-empty-panel .notice{margin:12px 0 16px;padding:12px 15px;line-height:1.6;display:block}
+.via-empty-panel .button-row{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+.via-diagnostic{margin:14px 0;padding:16px 18px;min-width:0}
+.via-diagnostic-toggle{display:flex;width:100%;gap:14px;justify-content:space-between;align-items:center;background:transparent;border:0;text-align:left;color:#163a58;cursor:pointer;padding:0;font:inherit}
+.via-diagnostic-toggle>span:first-child{display:flex;flex-direction:column;gap:6px}
+.via-diagnostic-toggle strong{font-size:13px}
+.via-diagnostic-toggle>span:last-child{white-space:nowrap;font-size:11px;color:#246e87;font-weight:700}
+.via-diagnostic-summary{display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-size:11px;color:#617b92}
+.via-diagnostic-summary b{font-size:11px;color:#163a58}
+.via-diagnostic .notice{margin:14px 0;padding:12px 14px}
+.via-diagnostic-preview{margin-top:18px}
+.via-diagnostic-title{color:#183e5c;font-weight:750;font-size:12px;margin-bottom:8px}
+.via-preview-scroll{max-width:100%;overflow-x:auto;border:1px solid #e1e9f1;border-radius:6px}
+.via-preview-scroll table{border-collapse:collapse;width:100%;font-size:11px;text-align:left}
+.via-preview-scroll th{background:#f2f6f9;color:#4b6378}
+.via-preview-scroll th,.via-preview-scroll td{padding:8px 10px;border-bottom:1px solid #e5ebf1;vertical-align:top}
+.via-preview-scroll td:first-child,.via-preview-scroll th:first-child{width:55px;text-align:center;font-weight:750;color:#53687c}
+.via-cell{display:inline-block;vertical-align:top;white-space:normal;max-width:290px;overflow-wrap:anywhere;border:1px solid #e2eaf1;border-radius:4px;padding:4px 6px;margin:2px;background:#fff}
+.via-cell b{color:#12688a}
+.via-column-form{margin-top:17px;padding-top:15px;border-top:1px solid #e1e8f0}
+.via-config-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.via-config-grid label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#36516d}
+.via-config-grid input,.via-config-grid select{width:100%;max-width:100%;min-width:0;font-weight:400}
+.via-column-form .button-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.via-helper{line-height:1.5;font-size:11px;color:#71879b;margin-top:11px}
+@media(max-width:980px){.via-config-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.via-config-grid{grid-template-columns:1fr}}

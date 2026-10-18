@@ -1,0 +1,6 @@
+<!doctype html><html><body><button id="gen">Exportar</button><output id="res"></output><script type="module">
+import {exportTacticalSummaryPpt} from './ppt-export.js';
+const e=(id,status,name,dep,green=false)=>({id:'r'+id,name,dependency:dep,status,statusRaw:status,high:true,green,dateAlerts:[]});
+const sample=[e(1,'Validada','RENIEC','GSJ',true),e(2,'Validada','CONADIS','GSJ',true),e(3,'Por validar','ASBANC','GTI'),e(4,'En pruebas','SUNARP','GTI'),e(5,'En desarrollo','SINAREJ - Multas','Softplan / GTI')];
+document.getElementById('gen').onclick=async()=>{try{await exportTacticalSummaryPpt({category:{id:'critica',label:'Severidad Crítica'},primary:sample,visibleFiltered:sample,manualEntries:[e(10,'Sin clasificar','Elevación Suprema','PJ')],nonPrioritized:[],stateFilter:'Todos',query:''});document.getElementById('res').textContent='ok';}catch(e){document.getElementById('res').textContent=e.message;}};
+</script></body></html>

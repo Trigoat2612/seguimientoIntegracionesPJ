@@ -1,4 +1,4 @@
-# Tablero de Integraciones PJ · V1.9.2 · Resumen táctico y clasificación
+# Tablero de Integraciones PJ · V1.9.7 · Entidad desde la columna E en PowerPoint
 
 ## Propósito
 
@@ -112,3 +112,96 @@ node tests/tactical-categories.test.mjs
 ```
 
 Estas pruebas utilizan registros ficticios (no credenciales ni archivos privados) y verifican el rango hasta fila 36, reglas de verde, ocho opciones incluyendo Todas, exclusividad de severidades, variantes de escritura y distinción entre ciclos. La ejecución visual automatizada en Chromium quedó bloqueada por política del entorno; se recomienda una última inspección de interfaz al cargar el Google Sheets privado real.
+
+
+## V1.9.3 · Exportación de diapositiva resumen
+
+- Se incorpora el botón **Generar diapositiva resumen** en la pestaña **Resumen táctico**.
+- La exportación genera un archivo PowerPoint (.pptx) con una lámina resumen basada en el filtro táctico visible.
+- Cuando el filtro es **Todas las integraciones**, se incluye una segunda diapositiva para las no priorizadas.
+- La presentación conserva la agrupación por estado: Validada, Por validar, En pruebas y En desarrollo.
+
+
+## V1.9.5 · Diapositiva resumen alineada al formato objetivo
+
+- La exportación a PowerPoint adopta el estilo del archivo de referencia `Diapo_Resumen(1).pptx`.
+- Se ajustan colores, tipografía y distribución general para aproximarse a la lámina objetivo.
+- El cuadro **Manual** siempre se muestra, incluso cuando no existan registros bajo el filtro activo.
+- Se incorpora el fondo institucional del ejemplo en la diapositiva exportada.
+
+
+## V1.9.6 · Exportación institucional y distribución automática
+
+- La diapositiva generada replica **medidas, tipografía Calibri, colores y encabezado/pie institucional** del archivo `Diapo_Resumen(1).pptx`. El fondo institucional se incorpora como imagen propia del proyecto; las tarjetas y textos permanecen editables en PowerPoint.
+- El botón **Generar diapositiva resumen** usa los filtros activos del Resumen táctico. Se mantiene una sola lámina cuando todo cabe; si no, se generan **láminas de continuación** con la misma plantilla, sin omitir registros.
+- El bloque **Manual** siempre se incluye, independientemente del filtro de severidad o ciclo, utilizando todos los registros `D = Manual` de `Seguimiento` (hasta fila 36). Cuando no existan, muestra 0; en las páginas siguientes se mantiene el bloque.
+- Los estados distintos de los cuatro principales, como `Ciclo 2`, se muestran en un bloque complementario **Otros estados / tipos fuera del flujo de pruebas**, en lugar de quedar invisibles.
+- La biblioteca de exportación PPTX se distribuye localmente en `vendor/pptxgen.bundle.js` y no requiere CDN.
+- `ppt-layout.js` calcula la paginación. Puede verificarse con `node tests/ppt-layout.test.mjs`. Se preserva la fuente privada por OAuth y no se incluyen libros originales en el ZIP.
+- Los totales de las cuatro tarjetas reflejan el conjunto filtrado completo, **no únicamente la parte visible en la primera lámina**. Los datos tácticos del documento privado se mantienen fuera del código fuente.
+
+**Limitación visual:** en los casos con nombres muy extensos, la letra puede reducirse dentro del cuadro; al superar la capacidad se crea una nueva lámina. Los elementos editables reproducen el diseño, sin prometer identidad píxel a píxel entre diferentes versiones de PowerPoint o LibreOffice.
+
+
+## V1.9.7 · Entidad exacta de Seguimiento!E
+
+- El campo **Entidad** del PPT se alimenta exclusivamente del contenido de **columna E** de la hoja `Seguimiento` (campo `dependency` del modelo táctico).
+- No se separan los valores por `/`, no se fusionan entidades de filas distintas y no se inventa `PJ` para el cuadro Manual.
+- Cuando un bloque contiene una única entidad E común a todos sus registros, se muestra `Entidad: <valor E>` en la cabecera del bloque.
+- Si hay entidades diferentes o valores vacíos, no se atribuye una sola entidad al bloque: la exportación incluye `Entidad: <valor E>` junto a cada integración que tenga E informada.
+- Los valores vacíos permanecen vacíos; no se sustituyen por etiquetas presumidas.
+- El cuadro Manual, los colores, la plantilla institucional, los filtros y la paginación automática siguen como en V1.9.6.
+- Pruebas reproducibles: `node tests/ppt-entities.test.mjs` y `node tests/ppt-layout.test.mjs`.
+
+
+## V1.9.8 · Una sola diapositiva y morado exclusivo para Crítica
+
+- El botón **Generar diapositiva resumen** exporta **exactamente una diapositiva PowerPoint**, independientemente del número de integraciones filtradas.
+- Si alguna lista excede su cuadro original, sus registros se colocan en **Integraciones adicionales / otros estados**, dentro de la misma diapositiva. El número de registros no se reduce.
+- **Color de texto morado (`#7030A0`):** solo cuando el filtro seleccionado es **Severidad Crítica**. Con Alta, Todas, Ciclo 2, etc., los nombres utilizan el color normal (`#1A1F2B`).
+- Se mantiene el cuadro **Manual** y los valores literales de **Entidad** obtenidos exclusivamente de la columna E.
+- Densidades extremas pueden reducir la legibilidad debido a la restricción de una sola diapositiva. Las listas adicionales usan distribución compacta.
+
+
+### V1.9.9 · Corrección del cuadro «Integraciones adicionales / otros estados»
+
+**Causa corregida:** las estimaciones de altura repetían el texto de Entidad aunque existiera una única entidad común; por ello la exportación podía enviar un registro válido a «Otros estados». Ahora se optimiza el espacio antes de reubicar nombres y se respeta la clasificación de la columna D de `Seguimiento`.
+
+- Registros `Validada`, `Por validar`, `En pruebas` y `En desarrollo` permanecen en sus bloques cuando hay espacio suficiente.
+- El cuadro de otros estados solo contiene valores de D diferentes de esos cuatro y de `Manual`.
+- Para casos extraordinarios donde la cantidad de nombres no puede caber físicamente en su cuadro, la zona inferior se identifica como **«Continuación por estado»** en la misma diapositiva, sin atribuirles un estado distinto.
+- El cuadro `Manual` permanece siempre visible.
+
+Prueba: `node --test tests/ppt-state-grouping.test.mjs tests/ppt-layout.test.mjs`.
+
+## V1.10 · Integraciones por vía y etapa
+
+- Se incorpora **Integraciones por vía** en el menú lateral.
+- La nueva vista se alimenta de la pestaña **IntegracionesEtapa** del **mismo Excel privado del seguimiento táctico**, que contiene la pestaña **Seguimiento**. Reutiliza OAuth y el botón de actualización del Resumen táctico.
+- Soporta dos esquemas identificados por **cabeceras** (independientemente de la posición de las columnas):
+  1. Lista: columnas **Vía / Etapa / Integración**. Cada fila relaciona una integración con su vía y etapa. Se permiten celdas fusionadas (vía y etapa se heredan de la última celda no vacía).
+  2. Matriz: columnas **Vía / Integración** y varias columnas de etapa (**Registro demanda**, **Calificación**, **Trámite**, **Ejecución**), marcadas con valores afirmativos.
+- Las integraciones se cruzan con **Seguimiento** por su nombre normalizado. «Lista» equivale a estado **Validada/Validado**. Otros estados se consideran pendientes. Si el nombre no coincide, se indica *Sin vincular con Seguimiento* y no se afirma que esté validada ni que tenga severidad conocida.
+- Filtros: **Todas, Crítica** (Alta + relleno verde), **Alta** (Alta sin relleno verde) y **No priorizadas** (únicamente coincidencias de Seguimiento cuya criticidad es distinta de Alta).
+- Incluye exportación PowerPoint con una sola diapositiva **por vía**, tanto para una vía individual como para todas las vías, y conserva los textos editables, la tipografía Calibri y el fondo institucional del ejemplo `Integracionxvia.pptx`.
+- El PowerPoint **no inventa registros**. En listas extraordinariamente extensas, en lugar de omitir nombres, avisa que la vía supera la capacidad de lectura de una diapositiva.
+
+**Importante:** no se ha proporcionado en esta conversación un ejemplar exportado de la hoja privada «IntegracionesEtapa». Se verificaron el lector y los filtros con datos de prueba, pero es necesaria una prueba real contra los encabezados del documento de Google. Si la fuente usa un diseño distinto, el tablero mostrará un diagnóstico de estructura no reconocida, sin generar asociaciones incorrectas.
+
+
+## V1.10.1 · Diagnóstico y mapeo de IntegracionesEtapa
+
+Corrige el caso en que Google Drive descarga correctamente la hoja `IntegracionesEtapa`, pero sus encabezados no coinciden con los nombres esperados. El tablero ahora:
+
+1. Muestra un error destacado, diferenciando una hoja ausente de encabezados no reconocidos.
+2. Presenta una vista previa de las primeras filas con sus referencias A, B, C, etcétera, sin subir esos datos a terceros.
+3. Permite configurar en la misma pestaña las columnas de **Vía**, **Etapa** e **Integración**, así como el número de fila de encabezados.
+4. Admite lista vertical, matriz de etapas, vías como columnas y secciones encabezadas por vía y etapa.
+5. Reprocesa el Excel ya cargado, sin volver a iniciar OAuth; mantiene estados y severidad desde `Seguimiento`.
+6. Incluye pruebas reproducibles en `tests/vias-diagnostics.test.mjs`.
+
+### Qué hacer si aparece «Encabezados no reconocidos»
+
+En **Integraciones por vía**, abre **Diagnóstico de la hoja y configuración**. Lee la vista previa y selecciona los encabezados reales de las columnas. Para una tabla convencional, usa «Filas: Vía · Etapa · Integración», indica la fila donde aparecen los encabezados y asigna las tres columnas. Pulsa «Aplicar correspondencias».
+
+No se ha podido contrastar el mapeo con las filas reales del Google Sheets privado; si la estructura es más compleja, adjunta una exportación de la pestaña `IntegracionesEtapa` o una captura que incluya encabezados y algunas filas de ejemplo. Evita enviar datos judiciales personales.
