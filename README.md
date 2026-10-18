@@ -205,3 +205,12 @@ Corrige el caso en que Google Drive descarga correctamente la hoja `Integracione
 En **Integraciones por vía**, abre **Diagnóstico de la hoja y configuración**. Lee la vista previa y selecciona los encabezados reales de las columnas. Para una tabla convencional, usa «Filas: Vía · Etapa · Integración», indica la fila donde aparecen los encabezados y asigna las tres columnas. Pulsa «Aplicar correspondencias».
 
 No se ha podido contrastar el mapeo con las filas reales del Google Sheets privado; si la estructura es más compleja, adjunta una exportación de la pestaña `IntegracionesEtapa` o una captura que incluya encabezados y algunas filas de ejemplo. Evita enviar datos judiciales personales.
+
+
+## V1.10.2 · Orden y totalización de integraciones por vía
+
+- Para **Conflicto de autoridad** se fuerza la secuencia **Recepción → Trámite**, respetando el orden de las demás vías.
+- La pestaña **Integraciones por vía** muestra solo **dos indicadores**: integraciones listas (validadas) e integraciones pendientes (demás estados) para la vía y severidad elegidas.
+- Cada integración se contabiliza una sola vez en esos totales aunque aparezca en distintas etapas. Las listas continúan mostrando su ubicación por etapa.
+- En la presentación de PowerPoint por vía se utilizan los mismos dos totales globales y se eliminan los contadores de las etapas; se conserva una diapositiva por vía y el detalle de las listas.
+- Los datos siguen procediendo de las pestañas **IntegracionesEtapa** y **Seguimiento**. No se modifican OAuth ni el catálogo fijo.

@@ -9,7 +9,17 @@ const words={via:['via','via procesal','tipo de via','tipo via','tipo de proceso
 function headerKey(v){const s=norm(v);if(!s)return null;for(const [key,names] of Object.entries(words))if(names.some(n=>s===n||s.startsWith(n+' ')||s.endsWith(' '+n)))return key;return null;}
 const canonicalStage=s=>{const n=norm(s);return STAGE_SYNONYMS.find(g=>g.some(x=>norm(x)===n))?.[0]||null;};
 const isStageName=s=>!!canonicalStage(s);
-const stageSort=(a,b)=>{const ai=STAGE_ORDER.findIndex(x=>norm(x)===norm(a)),bi=STAGE_ORDER.findIndex(x=>norm(x)===norm(b));return (ai<0?100:ai)-(bi<0?100:bi)||a.localeCompare(b,'es');};
+// La vía Conflicto de autoridad comienza por Recepción y continúa con Trámite.
+// Se aplica solo a esa vía, sin alterar el orden de las demás.
+const sortStagesForVia=(viaName,a,b)=>{
+ if(norm(viaName).includes('conflicto de autoridad')){
+  const priority=s=>norm(s).startsWith('recepcion')?0:norm(s).startsWith('tramite')?1:2;
+  const diff=priority(a)-priority(b);
+  if(diff)return diff;
+ }
+ const ai=STAGE_ORDER.findIndex(x=>norm(x)===norm(a)),bi=STAGE_ORDER.findIndex(x=>norm(x)===norm(b));
+ return (ai<0?100:ai)-(bi<0?100:bi)||a.localeCompare(b,'es');
+};
 const matchKey=v=>norm(v).replace(/\b(de|del|el|la|los|las|para|y)\b/g,'').replace(/\s+/g,' ').trim();
 const FIXED_ALIASES={'expedientes judiciales exjuq':'expedientes judiciales exjuq','sinarej depositos':'sinarej depositos orden pago','sinarej depositos orden pago':'sinarej depositos orden pago','asbanc embargos':'asbanc embargos','cejsuperior':'cej superior','sinarej multas':'sinarej multas','mpe redireccionamiento':'mpe redireccionamiento'};
 const canonicalName=n=>FIXED_ALIASES[matchKey(n)]||matchKey(n);
@@ -105,7 +115,7 @@ export function parseVias(sheets,tactical,options={}){
   const via=viaMap.get(ent.via);if(!via.stages.has(ent.stage))via.stages.set(ent.stage,{name:ent.stage,entries:[],ready:0,pending:0});
   const stage=via.stages.get(ent.stage);stage.entries.push(ent);stage[ent.ready?'ready':'pending']++;via[ent.ready?'ready':'pending']++;
  }
- const vias=[...viaMap.values()].map(v=>({...v,stages:[...v.stages.values()].sort((a,b)=>stageSort(a.name,b.name))}));
+ const vias=[...viaMap.values()].map(v=>({...v,stages:[...v.stages.values()].sort((a,b)=>sortStagesForVia(v.name,a.name,b.name))}));
  if(unmatched.size)warnings.push(`${unmatched.size} integración(es) no se vinculan con Seguimiento; permanecen pendientes y sin severidad asignada.`);
  if(!entries.length)warnings.push('La hoja existe y se aplicó el mapeo, pero no se encontraron asociaciones vía–etapa–integración. Revisa las primeras filas y el tipo de distribución.');
  if(mode==='matriz')warnings.push('Se interpretó IntegracionesEtapa como matriz de etapas; las columnas con nombre de etapa actúan como indicadores de asociación.');
@@ -114,6 +124,14 @@ export function parseVias(sheets,tactical,options={}){
 export function getViaView(data,viaName,severity='todas'){
  const via=data?.vias.find(v=>v.name===viaName)||null;if(!via)return null;
  const stages=via.stages.map(s=>{const entries=s.entries.filter(e=>matchesViaSeverity(e,severity));return {name:s.name,entries,ready:entries.filter(e=>e.ready),pending:entries.filter(e=>!e.ready)};});
- return {name:via.name,stages,total:stages.reduce((n,s)=>n+s.entries.length,0),ready:stages.reduce((n,s)=>n+s.ready.length,0),pending:stages.reduce((n,s)=>n+s.pending.length,0)};
+ // Para el resumen de la vía, una integración cuenta una vez aunque aparezca en varias etapas.
+ const byIntegration=new Map();
+ for(const stage of stages)for(const e of stage.entries){
+  const key=canonicalName(e.name);
+  if(!byIntegration.has(key))byIntegration.set(key,!!e.ready);
+  else if(!e.ready)byIntegration.set(key,false); // criterio conservador ante inconsistencias
+ }
+ const ready=[...byIntegration.values()].filter(Boolean).length;
+ return {name:via.name,stages,total:byIntegration.size,associations:stages.reduce((n,s)=>n+s.entries.length,0),ready,pending:byIntegration.size-ready};
 }
 export function getAllViaViews(data,severity='todas'){return(data?.vias||[]).map(v=>getViaView(data,v.name,severity));}

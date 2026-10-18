@@ -9,10 +9,11 @@ function loadLibrary(){if(window.PptxGenJS)return Promise.resolve(window.PptxGen
 function background(){if(bgLoading)return bgLoading;bgLoading=fetch(BG).then(async r=>{if(!r.ok)throw new Error('No se pudo cargar el fondo institucional.');const b=await r.blob();return new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(b);});}).catch(e=>{bgLoading=null;throw e;});return bgLoading;}
 function text(slide,t,x,y,w,h,style={}){slide.addText(String(t??''),{x,y,w,h,margin:0,fontFace:'Calibri',fontSize:9,color:C.text,breakLine:false,valign:'mid',...style});}
 function rect(slide,pptx,x,y,w,h,bg=C.white,border=C.border){slide.addShape(pptx.ShapeType.rect,{x,y,w,h,fill:{color:bg},line:{color:border,pt:0.65}});}
-function countCard(slide,pptx,stage,x,y,w,accent){rect(slide,pptx,x,y,w,1.05);rect(slide,pptx,x,y,w,0.08,accent,accent);
- text(slide,stage.ready.length,x+0.18,y+0.20,0.82,0.55,{fontSize:31,color:accent,bold:true});
- text(slide,stage.name,x+1.10,y+0.21,w-1.20,0.26,{fontSize:12.8,bold:true,fit:'shrink',align:'center'});
- text(slide,'Integraciones validadas',x+1.10,y+0.56,w-1.2,0.18,{fontSize:8.2,italic:true,color:C.muted,align:'center',fit:'shrink'});
+function totalCard(slide,pptx,label,total,x,y,w,accent){
+ rect(slide,pptx,x,y,w,0.79);
+ rect(slide,pptx,x,y,w,0.075,accent,accent);
+ text(slide,String(total),x+0.19,y+0.20,0.87,0.40,{fontSize:28,color:accent,bold:true});
+ text(slide,label,x+1.12,y+0.25,w-1.31,0.27,{fontSize:16,color:C.text,bold:true});
 }
 function estimateRows(list){return list.reduce((n,e)=>n+(String(e.name).length>45?2:1),0);}
 function drawList(slide,pptx,entries,x,y,w,h,accent,purple){
@@ -58,26 +59,37 @@ function slideTitle(slide,via){
  text(slide,'+ Etapas',0.42,0.73,5.2,0.39,{fontSize:23,bold:true,color:C.navy});
 }
 function renderSingle(pptx,bg,via,severity){
- const slide=pptx.addSlide();slide.background={color:C.white};slide.addImage({data:bg,x:0,y:0,w:13.333333,h:7.5});slideTitle(slide,via);
+ const slide=pptx.addSlide();
+ slide.background={color:C.white};slide.addImage({data:bg,x:0,y:0,w:13.333333,h:7.5});slideTitle(slide,via);
  const stages=via.stages;const n=stages.length;
- if(!n){text(slide,'No hay integraciones para este filtro de severidad.',0.45,1.9,11,0.33,{fontSize:16,color:C.muted});return;}
- // Una vía, una diapositiva. Para más de 4 etapas se utiliza una segunda fila.
+ // Dos totales para toda la vía. Nunca se muestran cifras por etapa.
+ const countUnique=ready=>new Set(stages.flatMap(st=>st[ready?'ready':'pending'].map(e=>String(e.name||'').trim().toLowerCase()))).size;
+ totalCard(slide,pptx,'Integraciones listas',Number.isInteger(via.ready)?via.ready:countUnique(true),0.42,1.15,6.06,C.green);
+ totalCard(slide,pptx,'Integraciones pendientes',Number.isInteger(via.pending)?via.pending:countUnique(false),6.64,1.15,6.05,C.orange);
+ if(!n){text(slide,'No hay integraciones para este filtro de severidad.',0.45,2.3,11,0.33,{fontSize:16,color:C.muted});return;}
  if(n>8)throw new Error(`La vía «${via.name}» contiene ${n} etapas; supera las 8 que caben en una diapositiva legible.`);
- const rows=n>4?2:1;const maxCols=Math.min(4,n);const margin=0.42,gap=0.14;const width=(12.44-(maxCols-1)*gap)/maxCols;
- const rowHeight=rows===1?3.95:2.35;const cardHeight=rows===1?1.05:0.51;const stageTop=rows===1?1.60:1.18;
+ const rows=n>4?2:1,maxCols=Math.min(4,n),margin=0.42,gap=0.14,width=(12.44-(maxCols-1)*gap)/maxCols;
+ const panelY=2.12,panelH=rows===1?3.98:1.92,panelGap=0.18;
  for(let i=0;i<n;i++){
-  const row=Math.floor(i/maxCols),col=i%maxCols;const countInRow=Math.min(maxCols,n-row*maxCols);
-  const px=margin+col*(width+gap),py=stageTop+row*(rowHeight+0.20);const accent=accents[i%accents.length];
-  if(rows===1)countCard(slide,pptx,stages[i],px,py,width,accent);
-  else{
-   rect(slide,pptx,px,py,width,cardHeight);rect(slide,pptx,px,py,width,0.055,accent,accent);
-   text(slide,stages[i].ready.length,px+0.13,py+0.16,0.55,0.33,{fontSize:23,bold:true,color:accent});
-   text(slide,stages[i].name,px+0.76,py+0.19,width-0.87,0.20,{fontSize:10.5,bold:true,fit:'shrink'});
-  }
-  const ppY=py+cardHeight+0.09, ppH=rows===1?2.65:rowHeight-cardHeight-0.14;
-  stagePanel(slide,pptx,stages[i],px,ppY,width,ppH,accent,severity==='critica');
+  const row=Math.floor(i/maxCols),col=i%maxCols;
+  const px=margin+col*(width+gap),py=panelY+row*(panelH+panelGap),accent=accents[i%accents.length];
+  // Cabecera de etapa solo con su nombre; «Listas/Pendientes» en el interior, sin contadores.
+  rect(slide,pptx,px,py,width,panelH,C.white);
+  rect(slide,pptx,px,py,width,0.07,accent,accent);
+  text(slide,stages[i].name,px+0.12,py+0.16,width-0.24,0.28,{fontSize:12.6,bold:true,fit:'shrink',align:'center'});
+  const listTop=py+0.52,listHeight=panelH-0.55;
+  const stage=stages[i];
+  const readyWeight=Math.max(1,stage.ready.length),pendingWeight=Math.max(1,stage.pending.length);
+  const ratio=Math.min(0.68,Math.max(0.34,readyWeight/(readyWeight+pendingWeight)));
+  const rH=listHeight*ratio,pH=listHeight-rH;
+  text(slide,'Integraciones Listas',px+0.14,listTop,width-0.26,0.23,{fontSize:11.3,bold:true,color:C.green});
+  drawList(slide,pptx,stage.ready,px+0.16,listTop+0.28,width-0.29,Math.max(0.14,rH-0.33),accent,severity==='critica');
+  const pendTop=listTop+rH+0.04;
+  slide.addShape(pptx.ShapeType.line,{x:px+0.14,y:pendTop-0.05,w:width-0.28,h:0,line:{color:C.border,pt:0.7}});
+  text(slide,'Integraciones Pendientes',px+0.14,pendTop,width-0.26,0.23,{fontSize:11.3,bold:true,color:C.orange});
+  drawList(slide,pptx,stage.pending,px+0.16,pendTop+0.28,width-0.29,Math.max(0.12,pH-0.33),accent,severity==='critica');
  }
- text(slide,`Fuente: IntegracionesEtapa y Seguimiento · Severidad: ${severity==='todas'?'Todas':severity} · Vía: ${via.name}`,
+ text(slide,`Fuente: IntegracionesEtapa y Seguimiento · Severidad: ${severity==='todas'?'Todas':severity} · Vía: ${via.name} · Totales por integración única`,
   0.42,6.51,12.25,0.16,{fontSize:7.2,color:C.muted,fit:'shrink'});
 }
 export async function exportViasPpt(vias,severity='todas'){

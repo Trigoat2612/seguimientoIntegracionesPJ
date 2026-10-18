@@ -71,3 +71,8 @@
 - Mapeo manual local de columnas/encabezado sin volver a solicitar OAuth.
 - Soporte adicional para matrices por etapa, vías como columnas y secciones.
 - Errores visibles, conservando el PowerPoint por vía, estados y filtros de la V1.10.
+
+### V1.10.2 · Indicadores claros por vía
+- Se ordena «Conflicto de autoridad»: Recepción antes de Trámite.
+- Se eliminan cantidades repetidas en los encabezados de las etapas web y PowerPoint.
+- Se exponen únicamente dos totales de integraciones únicas: listas y pendientes, para la vía y filtro de severidad seleccionados.
