@@ -274,3 +274,18 @@ Prueba: `node tests/via-pending-alignment.test.mjs`.
 - La numeración de pasos se muestra como enteros.
 - Se muestran etiquetas de etapa dentro de cada caja de paso.
 - Las integraciones listas y pendientes se presentan como listados verticales, no como paneles contiguos.
+
+
+## V1.11.3 · Resumen táctico no priorizado por estados
+- La vista secundaria de integraciones no priorizadas ahora se separa por estado: Validada, Por validar, En pruebas, En desarrollo y Otros estados cuando corresponda.
+- Se mantienen los contadores por estado y el comportamiento de filtros/búsqueda existente.
+
+
+## V1.11.4 · Resumen táctico no priorizado con subgrupos
+- En la vista secundaria de integraciones no priorizadas, cada estado ahora agrupa y separa sus registros por: Ciclo 2, Ciclo 2/3, Funcionalidad nativa del sistema (antes «Funcionalidad para Ciclo 1»), Manual, No aplica integración y Otras clasificaciones.
+- Se conserva el agrupamiento principal por estado y los filtros existentes.
+
+
+## V1.11.5 · Corrección de no priorizadas por grupo
+- La vista secundaria deja de mostrar el bloque genérico “Otros estados” para los registros de columna D con clasificaciones específicas.
+- Ahora esos registros se muestran como grupos propios: Ciclo 2, Ciclo 2/3, Funcionalidad nativa del sistema, Manual, No aplica integración y Otras clasificaciones solo como residual.

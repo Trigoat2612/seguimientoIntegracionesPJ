@@ -218,9 +218,16 @@
 .tactical-secondary-body{border-top:1px solid #e5edf3;padding:14px 20px 21px;background:#fafcfe}
 .tactical-secondary-counts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .tactical-secondary-counts span{border:1px solid #dce7ef;border-radius:15px;background:#fff;padding:6px 11px;font-size:10px;color:#46637a}
-.tactical-secondary-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-.tactical-nonpriority{background:#fff;border:1px solid #e0e9f1;padding:8px;border-radius:8px;min-width:0}
-.tactical-nonpriority .tactical-item{border:none}
+.tactical-secondary-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.tactical-secondary-group{background:#fff;border:1px solid #e0e9f1;border-radius:10px;padding:10px;min-width:0}
+.tactical-secondary-group-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 10px;margin-bottom:8px;border-bottom:1px solid #edf2f6}
+.tactical-secondary-group-heading h4{margin:0;font-size:14px;color:#203c53}.tactical-secondary-group-heading strong{font-size:22px;color:var(--tactical-color);font-variant-numeric:tabular-nums}
+.tactical-secondary-group-list{display:flex;flex-direction:column;gap:8px}
+.tactical-secondary-group .tactical-item{margin:0}
+.tactical-secondary-subgroup{padding-top:4px}.tactical-secondary-subgroup+.tactical-secondary-subgroup{margin-top:10px;padding-top:10px;border-top:1px dashed #e6edf3}
+.tactical-secondary-subgroup-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}
+.tactical-secondary-subgroup-heading h5{margin:0;font-size:12px;color:#526a80;font-weight:800}
+.tactical-secondary-subgroup-heading span{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#eef4f8;color:#4c667c;font-size:11px;font-weight:800}
 .tactical-state-inline{display:inline-block;background:#f1f5f9;color:var(--tactical-color);font-size:10px;font-weight:760;padding:4px 7px;border-radius:4px}
 .tactical-uncategorized{margin-top:10px;border:1px dashed #b8c8d5;border-radius:7px;background:#fff;padding:14px}
 .tactical-uncategorized h3{font-size:12px;color:#466075;margin:0 0 9px}
@@ -230,8 +237,8 @@
 .tactical-source-option h3{margin:0 0 7px;font-size:12px;color:#254662}
 .tactical-source-option p{color:#668095;font-size:11px;line-height:1.6;margin:0 0 12px}
 .tactical-source-option .btn{display:inline-flex;align-items:center;margin:0 6px 6px 0;cursor:pointer}
-@media(max-width:1420px){.tactical-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical-secondary-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:780px){.tactical-intro,.tactical-section-title{flex-direction:column;align-items:stretch}.tactical-intro-actions{align-items:flex-start;min-width:0}.tactical-origin{text-align:left}.tactical-columns,.tactical-secondary-list{grid-template-columns:1fr}.tactical-search .input{min-width:0;width:100%}}
+@media(max-width:1420px){.tactical-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical-secondary-groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.tactical-intro,.tactical-section-title{flex-direction:column;align-items:stretch}.tactical-intro-actions{align-items:flex-start;min-width:0}.tactical-origin{text-align:left}.tactical-columns,.tactical-secondary-groups{grid-template-columns:1fr}.tactical-search .input{min-width:0;width:100%}}
 @media(max-width:480px){.tactical-kpis{grid-template-columns:1fr}.tactical-kpi{padding:11px 15px}.tactical-kpi-number{font-size:31px}.tactical-search{flex-wrap:wrap}.tactical-detail-grid{grid-template-columns:1fr}}
 
 /* V1.9.1: alertas visibles por fechas «Por informar» / «Revisión con…» en H, I o J. */
