@@ -211,9 +211,11 @@
 .tactical-mini-note{font-size:10px;line-height:1.7;color:#6f8598;margin:13px 0}
 .tactical-secondary{margin-top:18px;padding:0!important;overflow:hidden}
 .tactical-secondary-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;border:0;background:#fff;text-align:left;cursor:pointer;padding:19px 23px}
-.tactical-secondary-header>span:first-child{display:flex;flex-direction:column;gap:5px}
+.tactical-secondary-header-main{display:flex;flex-direction:column;gap:5px}
 .tactical-secondary-header strong{font-size:16px;color:#203c53}
 .tactical-secondary-header small{font-size:11px;color:#73889c}
+.tactical-secondary-header-side{display:flex;align-items:center;gap:10px;margin-left:auto}
+.tactical-header-total{display:flex;align-items:baseline;gap:8px}.tactical-header-total span{font-size:11px;color:#73889c;font-weight:700}.tactical-header-total strong{font-size:28px;line-height:1;color:#203c53;font-weight:800;font-variant-numeric:tabular-nums}
 .tactical-secondary-chevron{font-size:24px;color:#5c829b}
 .tactical-secondary-body{border-top:1px solid #e5edf3;padding:14px 20px 21px;background:#fafcfe}
 .tactical-secondary-counts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
@@ -230,7 +232,9 @@
 .tactical-secondary-subgroup-heading span{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#eef4f8;color:#4c667c;font-size:11px;font-weight:800}
 .tactical-state-inline{display:inline-block;background:#f1f5f9;color:var(--tactical-color);font-size:10px;font-weight:760;padding:4px 7px;border-radius:4px}
 .tactical-uncategorized{margin-top:10px;border:1px dashed #b8c8d5;border-radius:7px;background:#fff;padding:14px}
-.tactical-uncategorized h3{font-size:12px;color:#466075;margin:0 0 9px}
+.tactical-uncategorized-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px}
+.tactical-uncategorized h3{font-size:12px;color:#466075;margin:0}
+.tactical-uncategorized-head .tactical-header-total strong{font-size:26px}
 .tactical-footer,.tactical-placeholder{font-size:11px;line-height:1.7;color:#647c92;padding:13px 17px;border:1px solid #dceaf2;background:#f0f7fb;border-radius:8px}
 .tactical-placeholder{padding:32px;text-align:center;background:#fff}
 .tactical-source-option{padding:17px 23px;margin-top:13px;border-top:1px solid #e3edf3}
@@ -380,3 +384,6 @@
 .flow-warnings summary{cursor:pointer;font-weight:750}.flow-warnings p{line-height:1.6;margin:9px 0}
 .flow-placeholder{padding:27px}.flow-placeholder h2{font-size:20px;margin:8px 0}.flow-placeholder p{font-size:12px;line-height:1.6;color:#678097;max-width:760px}
 @media(max-width:760px){.flow-intro{flex-direction:column;align-items:flex-start}.flow-controls{align-items:stretch}.flow-controls label{max-width:none;min-width:100%}.flow-control-buttons{margin-left:0}.flow-track{grid-template-columns:1fr}.flow-lists{grid-template-columns:1fr}.flow-step-body{padding:12px}}
+
+@media (max-width:900px){.tactical-secondary-header{align-items:flex-start}.tactical-secondary-header-side{flex-shrink:0}.tactical-header-total strong{font-size:24px}}
+@media (max-width:640px){.tactical-secondary-header{flex-wrap:wrap}.tactical-secondary-header-side{width:100%;justify-content:flex-end}}

@@ -289,3 +289,19 @@ Prueba: `node tests/via-pending-alignment.test.mjs`.
 ## V1.11.5 · Corrección de no priorizadas por grupo
 - La vista secundaria deja de mostrar el bloque genérico “Otros estados” para los registros de columna D con clasificaciones específicas.
 - Ahora esos registros se muestran como grupos propios: Ciclo 2, Ciclo 2/3, Funcionalidad nativa del sistema, Manual, No aplica integración y Otras clasificaciones solo como residual.
+
+
+## V1.11.6 · Resumen rápido en no priorizadas
+- La vista secundaria de integraciones no priorizadas incorpora un resumen general con totales rápidos para facilitar una lectura ejecutiva.
+- El resumen muestra el total no priorizado y los conteos por estado y por grupo de clasificación aplicable.
+
+
+## V1.11.7 · Totales visibles en encabezados
+- Se retira el bloque de total general desde el interior del desplegable de integraciones no priorizadas.
+- El total de “Integraciones no priorizadas” ahora se muestra en el encabezado derecho para lectura rápida.
+- El bloque de “Otros estados” dentro de priorizadas también muestra su total en el encabezado derecho.
+
+
+## V1.11.8 · Manual como grupo y totales estandarizados
+- En el bloque superior de priorizadas, los registros con clasificación Manual ya no se muestran como “Otros estados”; ahora se presentan bajo el grupo “Manual”.
+- Se estandariza la visualización de totales en encabezados con el formato “Total X”, tanto en no priorizadas como en los bloques superiores equivalentes.
