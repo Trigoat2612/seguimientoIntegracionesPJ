@@ -5,6 +5,64 @@ const LIBRARY='./vendor/pptxgen.bundle.js';
 const TEMPLATE_BG='./ppt-template-bg.png';
 export const PPT_COLORS=Object.freeze({green:'2E7D32',blue:'00244F',red:'C00000',yellow:'FFC000',titleRed:'7E1E1E',text:'1A1F2B',muted:'4A4E57',gray:'A5A5A5',purple:'7030A0',border:'D9DCE1',white:'FFFFFF'});
 const C=PPT_COLORS;
+
+const norm=v=>String(v??'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+function splitNonPrioritizedGroups(entries){
+ const items=(entries||[]).map(it=>it?.entry||it).filter(Boolean);
+ const groups={
+  'Ciclo 2':items.filter(e=>norm(e.statusRaw)==='ciclo 2'),
+  'Ciclo 2/3':items.filter(e=>/^ciclo 2\s*\/\s*3$/.test(norm(e.statusRaw))),
+  'Funcionalidad nativa del sistema':items.filter(e=>norm(e.statusRaw)==='funcionalidad para ciclo 1'),
+  'No aplica integración':items.filter(e=>norm(e.statusRaw)==='no aplica integracion')
+ };
+ const used=new Set(Object.values(groups).flat().map(e=>String(e.id||e.name)));
+ groups['Otros estados']=items.filter(e=>!used.has(String(e.id||e.name)));
+ return groups;
+}
+function compactColumns(entries,cols=2,rowH=0.15){
+ const list=(entries||[]).map(entry=>({entry,height:rowH}));
+ const columns=Array.from({length:cols},()=>[]);
+ if(!list.length)return columns;
+ const perCol=Math.ceil(list.length/cols);
+ list.forEach((item,i)=>{columns[Math.min(cols-1,Math.floor(i/perCol))].push(item);});
+ return columns;
+}
+function miniGroupPanel(slide,pptx,pos,title,count,entries,color){
+ rect(slide,pptx,pos.x,pos.y,pos.w,pos.h,C.white,C.border,0.7);
+ rect(slide,pptx,pos.x,pos.y,0.045,pos.h,color,color,0);
+ addText(slide,title,pos.x+0.14,pos.y+0.06,pos.w-0.62,0.16,{fontSize:9.4,bold:true,fit:'shrink'});
+ addText(slide,String(count),pos.x+pos.w-0.34,pos.y+0.04,0.22,0.18,{fontSize:12,bold:true,align:'right',color});
+ if(!(entries||[]).length){
+  addText(slide,'Sin registros',pos.x+0.14,pos.y+0.27,pos.w-0.28,0.14,{fontSize:7.8,italic:true,color:C.muted});
+  return;
+ }
+ const desiredCols=(entries||[]).length>3?2:1;
+ const cols=compactColumns(entries,desiredCols,0.11), left=pos.x+0.14, gap=0.10, available=pos.w-0.28-(desiredCols-1)*gap, colW=available/desiredCols;
+ for(const [ci,items] of cols.entries()){
+  let cy=pos.y+0.24;
+  for(const it of items){
+   item(slide,pptx,it,left+ci*(colW+gap),cy,colW,{bulletColor:color,font:6.8,perIntegrationEntity:false,purple:false});
+   cy+=it.height;
+  }
+ }
+}
+function renderNonPrioritizedExtras(slide,pptx,page){
+ const groups=splitNonPrioritizedGroups(page.parts['Otros estados'].flat());
+ const area={x:0.424,y:4.368,w:12.390,h:1.875};
+ rect(slide,pptx,area.x,area.y,area.w,area.h,C.white,C.border,0.7);
+ addText(slide,'Clasificaciones adicionales',area.x+0.16,area.y+0.08,3.6,0.18,{fontSize:12.5,bold:true});
+ const cards=[
+  {title:'Ciclo 2', entries:groups['Ciclo 2'], color:C.blue, x:area.x+0.16, y:area.y+0.34, w:6.00, h:0.62},
+  {title:'Ciclo 2/3', entries:groups['Ciclo 2/3'], color:C.blue, x:area.x+6.28, y:area.y+0.34, w:5.95, h:0.62},
+  {title:'Funcionalidad nativa del sistema', entries:groups['Funcionalidad nativa del sistema'], color:C.gray, x:area.x+0.16, y:area.y+1.03, w:6.00, h:0.62},
+  {title:'No aplica integración', entries:groups['No aplica integración'], color:C.gray, x:area.x+6.28, y:area.y+1.03, w:5.95, h:0.62}
+ ];
+ cards.forEach(c=>miniGroupPanel(slide,pptx,c,c.title,(c.entries||[]).length,c.entries,c.color));
+ if((groups['Otros estados']||[]).length){
+  addText(slide,`Otros estados: ${groups['Otros estados'].length}`,area.x+9.55,area.y+0.08,2.5,0.16,{fontSize:8.2,color:C.muted,align:'right'});
+ }
+}
+
 const POS={
   cards:[{x:0.424,y:1.010,w:3.000,h:1.050},{x:3.554,y:1.010,w:3.000,h:1.050},{x:6.704,y:1.013,w:3.000,h:1.050},{x:9.804,y:1.007,w:3.000,h:1.050}],
   sections:{
@@ -61,8 +119,8 @@ function item(slide,pptx,itemLayout,x,y,w,{bulletColor=C.blue,font=8.5,perIntegr
  const alert=(entry.dateAlerts||[]).length>0;
  const color=purple?C.purple:C.text;
  slide.addShape(pptx.ShapeType.ellipse,{
-  x:x,y:y+0.067,w:0.060,h:0.060,
-  fill:{color:entry.green?C.green:bulletColor},line:{color:entry.green?C.green:bulletColor,pt:0}
+  x:x,y:y+0.020,w:0.060,h:0.060,
+  fill:{color:bulletColor},line:{color:bulletColor,pt:0}
  });
  const name=integrationWithEntity(entry,perIntegrationEntity);
  // En paneles mixtos, cada integración identifica exclusivamente su propia celda E.
@@ -112,16 +170,16 @@ function title(slide,pptx,pageNum,totalPages){
  if(totalPages>1)addText(slide,`Continuación ${pageNum}/${totalPages}`,10.00,0.55,2.74,0.17,{align:'right',fontSize:8.5,color:C.muted});
 }
 function addFooter(slide,plan,model,pageIndex){
- const category=model.category?.label||'Todas las integraciones';
+ const category=model.presentationLabel||model.category?.label||'Todas las integraciones';
  const extra=plan.pages.length>1?` · Lámina ${pageIndex}/${plan.pages.length}`:'';
  const note=`Fuente: Seguimiento (filas 1–36) · ${category}${extra}`;
  addText(slide,note,3.55,6.29,8.8,0.15,{fontSize:7.1,color:C.muted,fit:'shrink'});
 }
-function renderSlide(pptx,bg,page,plan){
+function renderSlide(pptx,bg,page,plan,meta={}){
  const slide=pptx.addSlide();
  slide.background={color:C.white};
  slide.addImage({data:bg,x:0,y:0,w:13.333333,h:7.5});
- title(slide,pptx,page.index,page.totalPages);
+ title(slide,pptx,meta.index||page.index,meta.totalPages||page.totalPages);
  const states=['Validada','Por validar','En pruebas','En desarrollo'];
  const purple=plan.model.category?.id==='critica';
  states.forEach((state,i)=>{
@@ -133,11 +191,15 @@ function renderSlide(pptx,bg,page,plan){
   const captions={'Validada':'Integraciones validadas','Por validar':'Integraciones por validar','En pruebas':'Integraciones en Pruebas','En desarrollo':'Integraciones en Desarrollo'};
   panel(slide,pptx,section,captions[st],page.parts[st],{font:page.fontByState?.[st]||(st==='Validada'?7.8:8.0),purple});
  }
- addManual(slide,pptx,page.parts.Manual,page.totals.Manual,plan.manualCount>0,purple);
+ if(plan.model.category?.id!=='no_priorizadas'){
+  addManual(slide,pptx,page.parts.Manual,page.totals.Manual,plan.manualCount>0,purple);
+ }
  // Un estado reconocido nunca aparece bajo la etiqueta «Otros estados».
  const continued=page.parts.Continuacion.flat();
  const unclassified=page.parts['Otros estados'].flat();
- if(continued.length||unclassified.length){
+ if(plan.model.category?.id==='no_priorizadas' && unclassified.length && !continued.length){
+  renderNonPrioritizedExtras(slide,pptx,page);
+ }else if(continued.length||unclassified.length){
   const title=continued.length
    ? (unclassified.length?'Continuación por estado y estados sin clasificar':'Continuación por estado')
    : 'Estados sin clasificar';
@@ -146,17 +208,40 @@ function renderSlide(pptx,bg,page,plan){
   const extra=packOverflowItems([...continued,...unclassified].map(it=>it.entry));
   panel(slide,pptx,POS.sections['Otros estados'],title,extra.columns,{font:extra.font,purple});
  }
- addFooter(slide,plan,plan.model,page.index);
+ addFooter(slide,plan,plan.model,meta.index||page.index);
  return slide;
+}
+function buildSupplementaryNonPrioritizedModel(model){
+ const items=Array.isArray(model?.nonPrioritized)?model.nonPrioritized:[];
+ return {
+  ...model,
+  category:{id:'no_priorizadas',label:'Integraciones no priorizadas'},
+  presentationLabel:'Integraciones no priorizadas',
+  primary:items,
+  visibleFiltered:items,
+  unknown:items.filter(e=>!PRESENTATION_STATES.includes(e.status)),
+  manualEntries:items.filter(e=>String(e?.statusRaw||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase()==='manual')
+ };
 }
 export async function exportTacticalSummaryPpt(model){
  const PptxGenJS=await loadPptx();
  const bg=await getBg();
  const pptx=new PptxGenJS();
  pptx.layout='LAYOUT_WIDE';pptx.author='Proyecto EJE No Penal';pptx.subject='Resumen táctico de integraciones';pptx.title='Status Integraciones';pptx.lang='es-PE';
- const plan=buildTacticalSlidePlan(model);
- if(plan.pages.length!==1)throw new Error('El resumen táctico debe tener una única diapositiva.');
- renderSlide(pptx,bg,plan.pages[0],plan);
+ const plans=[];
+ const primaryPlan=buildTacticalSlidePlan(model);
+ plans.push(primaryPlan);
+ if(model?.category?.id==='todas' && Array.isArray(model?.nonPrioritized) && model.nonPrioritized.length){
+  plans.push(buildTacticalSlidePlan(buildSupplementaryNonPrioritizedModel(model)));
+ }
+ const totalSlides=plans.reduce((n,plan)=>n+plan.pages.length,0);
+ let slideIndex=1;
+ for(const plan of plans){
+  for(const page of plan.pages){
+   renderSlide(pptx,bg,page,plan,{index:slideIndex,totalPages:totalSlides});
+   slideIndex++;
+  }
+ }
  const suffix=model.category?.id&&model.category.id!=='todas'?'_'+model.category.id:'';
  await pptx.writeFile({fileName:`Status_Integraciones${suffix}_${new Date().toISOString().slice(0,10)}.pptx`});
 }

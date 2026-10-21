@@ -140,3 +140,36 @@
 ## V1.11.8 · Manual como grupo y totales estandarizados
 - En el bloque superior de priorizadas, los registros con clasificación Manual ya no se muestran como “Otros estados”; ahora se presentan bajo el grupo “Manual”.
 - Se estandariza la visualización de totales en encabezados con el formato “Total X”, tanto en no priorizadas como en los bloques superiores equivalentes.
+
+
+## V1.11.9 · Ajustes de exportación PPT por vía
+- Se corrigió la alineación vertical de las viñetas respecto del texto en las listas de integraciones.
+- Los puntos de las listas usan de forma consistente el color de la columna/etapa donde se dibuja el ítem.
+- En la exportación PowerPoint por vía, las integraciones con estado **Por validar** se consideran dentro del bloque **Integraciones listas**.
+
+
+## V1.11.9.1 · Corrección final de viñetas en PPT
+- En la exportación del **Resumen táctico**, las viñetas se alinean al mismo nivel vertical del texto de cada integración.
+- Las viñetas respetan el color de la columna/panel (Validada, Por validar, En pruebas, En desarrollo) y ya no heredan color verde por registro.
+- Se mantiene la mejora previa para exportación **por vía**: estado **Por validar** se considera como integración lista.
+
+
+## V1.12.0 · Exportación de no priorizadas en nueva diapositiva
+- La exportación del resumen táctico ahora incluye, cuando el filtro es **Todas las integraciones**, una **segunda diapositiva** para las **integraciones no priorizadas**.
+- La nueva lámina usa el mismo esquema visual aplicado a críticas y altas: bloques por estado, cuadro manual y pie de fuente.
+- La presentación conserva numeración de láminas cuando se genera más de una diapositiva en el mismo archivo PowerPoint.
+
+
+## V1.12.1 · No priorizadas con subpaneles de clasificación
+- En la diapositiva de **integraciones no priorizadas**, la franja inferior ahora separa explícitamente las integraciones en:
+  - **Ciclo 2**
+  - **Ciclo 2/3**
+  - **Funcionalidad nativa del sistema** (valor fuente: Funcionalidad para Ciclo 1)
+  - **No aplica integración**
+- Si existiera alguna clasificación adicional fuera de esos grupos, se muestra en un bloque residual de **Otros estados**.
+
+
+## V1.12.2 · Mejora de legibilidad en la segunda diapositiva
+- En la diapositiva de **no priorizadas** se retiró el bloque **Manual** para aprovechar mejor el espacio.
+- Las clasificaciones adicionales (**Ciclo 2**, **Ciclo 2/3**, **Funcionalidad nativa del sistema**, **No aplica integración**) ahora se distribuyen en una retícula 2×2 de mayor tamaño, más legible.
+- Se redujo la densidad tipográfica y se ajustó el número de columnas internas por panel para mejorar lectura.

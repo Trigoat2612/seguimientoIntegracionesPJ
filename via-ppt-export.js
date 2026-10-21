@@ -16,6 +16,10 @@ function totalCard(slide,pptx,label,total,x,y,w,accent){
  text(slide,label,x+1.12,y+0.25,w-1.31,0.27,{fontSize:16,color:C.text,bold:true});
 }
 function estimateRows(list){return list.reduce((n,e)=>n+(String(e.name).length>45?2:1),0);}
+function isReadyForViaPpt(entry){
+ const status=String(entry?.status||entry?.statusRaw||'').trim().toLowerCase();
+ return !!entry?.ready||status==='por validar'||status.startsWith('por validar');
+}
 function drawList(slide,pptx,entries,x,y,w,h,accent,purple){
  if(!entries.length){text(slide,'Sin registros',x+0.10,y,w-0.2,0.18,{fontSize:8,italic:true,color:C.muted});return;}
  // Elegir entre 1 y 2 columnas según el volumen. No se omite ningún registro.
@@ -30,7 +34,7 @@ function drawList(slide,pptx,entries,x,y,w,h,accent,purple){
   for(const e of entries.slice(col*rows,(col+1)*rows)){
    const wrapped=String(e.name).length>45;
    const lineCount=wrapped?2:1;const ih=rowHeight*lineCount;
-   slide.addShape(pptx.ShapeType.ellipse,{x:cx,y:cy+0.045,w:0.062,h:0.062,fill:{color:accent},line:{color:accent,pt:0}});
+   slide.addShape(pptx.ShapeType.ellipse,{x:cx,y:cy+0.012,w:0.062,h:0.062,fill:{color:accent},line:{color:accent,pt:0}});
    text(slide,e.name,cx+0.14,cy,cw-0.15,ih,{fontSize:fsize,color:purple?C.purple:C.text,bold:purple,fit:'shrink',valign:'top'});
    cy+=ih;
   }
@@ -61,11 +65,17 @@ function slideTitle(slide,via){
 function renderSingle(pptx,bg,via,severity){
  const slide=pptx.addSlide();
  slide.background={color:C.white};slide.addImage({data:bg,x:0,y:0,w:13.333333,h:7.5});slideTitle(slide,via);
- const stages=via.stages;const n=stages.length;
+ const stages=(via.stages||[]).map(stage=>{
+  const entries=Array.isArray(stage.entries)?stage.entries:[...(stage.ready||[]),...(stage.pending||[])];
+  const ready=entries.filter(isReadyForViaPpt);
+  const pending=entries.filter(entry=>!isReadyForViaPpt(entry));
+  return {...stage,entries,ready,pending};
+ });
+ const n=stages.length;
  // Dos totales para toda la vía. Nunca se muestran cifras por etapa.
  const countUnique=ready=>new Set(stages.flatMap(st=>st[ready?'ready':'pending'].map(e=>String(e.name||'').trim().toLowerCase()))).size;
- totalCard(slide,pptx,'Integraciones listas',Number.isInteger(via.ready)?via.ready:countUnique(true),0.42,1.15,6.06,C.green);
- totalCard(slide,pptx,'Integraciones pendientes',Number.isInteger(via.pending)?via.pending:countUnique(false),6.64,1.15,6.05,C.orange);
+ totalCard(slide,pptx,'Integraciones listas',countUnique(true),0.42,1.15,6.06,C.green);
+ totalCard(slide,pptx,'Integraciones pendientes',countUnique(false),6.64,1.15,6.05,C.orange);
  if(!n){text(slide,'No hay integraciones para este filtro de severidad.',0.45,2.3,11,0.33,{fontSize:16,color:C.muted});return;}
  if(n>8)throw new Error(`La vía «${via.name}» contiene ${n} etapas; supera las 8 que caben en una diapositiva legible.`);
  const rows=n>4?2:1,maxCols=Math.min(4,n),margin=0.42,gap=0.14,width=(12.44-(maxCols-1)*gap)/maxCols;
