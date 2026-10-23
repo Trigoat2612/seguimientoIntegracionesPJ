@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {validateIncidentCreate,validateIncidentChange,validateIncidentComment,normalizedDocumentCode,validEvidenceUrl,summarizeIncidents} from '../bitacora-validacion.js';
+const fixture={documentCode:' doc-013 ',documentName:'Documento funcional',title:'Observación de firma',description:'La sección 4 no está documentada',severity:'Alta',assignedTo:'Softplan',dueDate:'2026-11-13',evidenceUrl:'https://drive.google.com/file/d/123/view'};
+test('Se usa Cod Documento normalizado como relación',()=>{assert.equal(normalizedDocumentCode('Doc-001'),'DOC-001');assert.equal(validateIncidentCreate(fixture).documentCode,'DOC-013');});
+test('Requiere título y descripción',()=>{assert.throws(()=>validateIncidentCreate({...fixture,title:''}),/título/);assert.throws(()=>validateIncidentCreate({...fixture,description:''}),/descripción/);});
+test('Evita links inseguros en evidencias',()=>{assert.equal(validEvidenceUrl('javascript:alert(1)'),false);assert.equal(validEvidenceUrl('http://site.org'),false);assert.equal(validEvidenceUrl('https://drive.google.com/file'),true);});
+test('Las fechas imposibles no son aceptadas',()=>{assert.throws(()=>validateIncidentCreate({...fixture,dueDate:'2026-02-31'}),/fecha compromiso/);});
+test('Estados y severidades restringidos',()=>{assert.throws(()=>validateIncidentChange({status:'Validado documento',severity:'Alta',comment:'ok',expectedRevision:1}),/Estado/);assert.throws(()=>validateIncidentCreate({...fixture,severity:'Sin riesgo'}),/Severidad/);});
+test('Actualización requiere motivo y revisión para trazabilidad',()=>{assert.throws(()=>validateIncidentChange({status:'En atención',severity:'Alta',expectedRevision:2}),/Explica/);assert.equal(validateIncidentChange({status:'Subsanada',severity:'Baja',comment:'Nueva evidencia',expectedRevision:3}).expectedRevision,3);assert.throws(()=>validateIncidentComment({comment:'',expectedRevision:1}),/comentario/);});
+test('Cierre de incidencia no equivale a validación documental',()=>{assert.deepEqual(summarizeIncidents([{status:'Cerrada',severity:'Alta'},{status:'En atención',severity:'Crítica'}]),{total:2,abiertas:1,cerradas:1,criticas:1});});

@@ -63,7 +63,9 @@ function getSheetFormatting(zip,stylesXML,themeXML){
  });
  const numFmts={};for(const e of Array.from(top('numFmts')?.children||[])){if(e.localName==='numFmt')numFmts[Number(e.getAttribute('numFmtId'))]=e.getAttribute('formatCode')||'';}
  const xfs=Array.from(top('cellXfs')?.children||[]).filter(e=>e.localName==='xf').map(x=>{
-   const fillId=Number(x.getAttribute('fillId')||0),fmtId=Number(x.getAttribute('numFmtId')||0);const fmt=numFmts[fmtId]||'';
+   const fillId=Number(x.getAttribute('fillId')||0),fmtId=Number(x.getAttribute('numFmtId')||0);
+   const builtInFormats={1:'0',2:'0.00',3:'#,##0',4:'#,##0.00'};
+   const fmt=numFmts[fmtId]||builtInFormats[fmtId]||'';
    const customDate=/(?:y{2,4}|d{1,4})/i.test(fmt.replace(/\\.|"[^"]*"|\[[^\]]*\]/g,''));
    return {fillColor:fills[fillId]||null,dateStyle:(fmtId>=14&&fmtId<=22)||customDate,formatCode:fmt};
  });
@@ -104,6 +106,12 @@ export async function parseXlsx(buffer){
     vals[idx]=value;
     if(normSheet(name)==='seguimiento'&&(idx===11||idx===7||idx===8||idx===9)){
       const info=styleEntries[Number(c.getAttribute('s')||0)];if(info)cellMeta.set(`${ri}:${idx}`,info);
+    }
+    // CatalogoDocumentos: conservar tipo y formato por celda para evitar que
+    // un identificador visible 4.10 termine registrado como 4.1.
+    if(normSheet(name).replace(/[^a-z0-9]/g,'')==='catalogodocumentos'){
+      const style=styleEntries[Number(c.getAttribute('s')||0)]||{};
+      cellMeta.set(`${ri}:${idx}`,{...style,numeric:(type==null||type==='n')&&val!==''});
     }
    }
    rows[ri]=vals;

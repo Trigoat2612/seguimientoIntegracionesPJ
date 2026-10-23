@@ -1,0 +1,9 @@
+node_modules/
+.vercel/
+.env
+.env.*
+!.env.example
+*.log
+client_secret*.json
+credentials*.json
+%LOCALAPPDATA%

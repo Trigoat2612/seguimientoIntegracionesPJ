@@ -1,4 +1,6 @@
 import {parseXlsx} from './xlsx.js';
+import {parseDocumentCatalog,inspectDocumentCatalog,documentCatalogSummary,filterDocumentCatalog} from './catalogo-documentos.js';
+import {renderIncidentSection} from './bitacora-ui.js';
 import {parseTactical,getTacticalSummary,TACTICAL_STATES,TACTICAL_MAX_ROW,TACTICAL_CATEGORIES,tacticalMatchesCategory,tacticalCategoryCounts} from './tactical.js';
 import {CATALOGO_FIJO, linkCatalogItem} from './catalogo-fijo.js';
 import {buildModel,STAGE_PROGRESS} from './model.js';
@@ -24,6 +26,10 @@ const DEFAULT_GOOGLE_URL=String(CONFIG_SOURCE.url||'').trim();
 const PRIVATE_GOOGLE_SOURCE=String(CONFIG_SOURCE.access||'public').toLowerCase()==='private';
 const REFRESH_MINUTES=Math.min(120,Math.max(5,Number(CONFIG_SOURCE.refreshMinutes)||15));
 const TACTICAL_GOOGLE_URL=String(window.DASHBOARD_TACTICAL_SOURCE?.url||'').trim();
+const DOCUMENTS_GOOGLE_URL=String(window.DASHBOARD_DOCUMENTS_SOURCE?.url||'').trim()||TACTICAL_GOOGLE_URL;
+let documentCatalog=null,documentSheets=null,documentOrigin='',documentColumnMapping=null,documentError='',documentBusy=false,documentQuery='',documentStateFilter='',documentTypeFilter='',documentSpecialtyFilter='',documentOwnerFilter='',documentSelectedId='',documentConfigOpen=false;
+let incidentDraft={},incidentCode='',incidentItems=[],incidentEvents=[],incidentLoading=false,incidentError='',incidentAuthorized=false,incidentCreateOpen=false,incidentEditingId='',incidentBusy=false,incidentLimited=false;
+let documentReview=null,documentReviewHistory=[],documentReviewDraft=null,documentActionFeedback=null;
 let viasData=null,viaSelected='',viaSeverity='todas',viaExportBusy=false,viaRawSheets=null,viaColumnMapping=null,viaConfigOpen=false;
 let activityFlowData=null,activitySelected='',activitySeverity='todas',flowOpenedSteps=new Set(),flowOpenedActivities=new Set();
 let tacticalData=null,tacticalBusy=false,tacticalError='',tacticalOrigin='',tacticalQuery='',tacticalStateFilter='Todos',tacticalCategoryFilter='todas',tacticalOpened=new Set(),tacticalSecondaryOpen=false,tacticalExportBusy=false;
@@ -31,15 +37,15 @@ let specialty='todas',catalogSearch='',catalogObserved='todos',catalogAvailabili
 let validationEvidence=calculateValidation(new Map(),CATALOGO_FIJO);
 let driveBusy=false;
 let hierarchy=null,excelNotes=[],notes=loadObservations(),expandedSystems=new Set(),expandedIntegrations=new Set(),systemFilter='',technicalIntegrationFilter='',technicalFilter='',model=null,activeTab='overview',query='',stateFilter='',equivFilter='',integrationFilter='',page=1,sortMode='endpoints',currentSource='none',currentDriveUrl='',refreshTimer=null,refreshOn=false,accessToken='',googleClient=null,drawerId=null;
-const tabTitles={'activity-flow':['Flujo de actividades · Laboral','Seguimiento por vía, paso y actividad con integraciones listas y pendientes.','Flujo de actividades'],vias:['Integraciones por vía · Laboral','Etapas procesales, integraciones listas y pendientes, con filtro de severidad.','Integraciones por vía'],tactical:['Resumen táctico · Laboral','Estado situacional filtrable por severidad, ciclo y tipo, con dependencias e hitos.','Resumen táctico'],systems:['Sistemas e integraciones','Desglose desde Sistemas a componentes de integración y endpoints, con observaciones por nivel.','Sistemas'],overview:['Panel de integraciones','Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.','Resumen ejecutivo'],integrations:['Integraciones por especialidad','Todas las integraciones del Excel técnico o las 36 de Laboral, seleccionables desde el filtro superior.','Integraciones'],endpoints:['Catálogo de endpoints','Equivalencias, atributos y trazabilidad hacia la pestaña y fila de origen.','Endpoints'],technical:['Documentación técnica','Estructuras de datos y procedimientos que no deben contabilizarse como endpoints.','Datos técnicos']};
+const tabTitles={'documents':['Control documental','Catálogo y bitácora de incidencias por documento, con historial y trazabilidad.','Control documental'],'activity-flow':['Flujo de actividades · Laboral','Seguimiento por vía, paso y actividad con integraciones listas y pendientes.','Flujo de actividades'],vias:['Integraciones por vía · Laboral','Etapas procesales, integraciones listas y pendientes, con filtro de severidad.','Integraciones por vía'],tactical:['Resumen táctico · Laboral','Estado situacional filtrable por severidad, ciclo y tipo, con dependencias e hitos.','Resumen táctico'],systems:['Sistemas e integraciones','Desglose desde Sistemas a componentes de integración y endpoints, con observaciones por nivel.','Sistemas'],overview:['Panel de integraciones','Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.','Resumen ejecutivo'],integrations:['Integraciones por especialidad','Todas las integraciones del Excel técnico o las 36 de Laboral, seleccionables desde el filtro superior.','Integraciones'],endpoints:['Catálogo de endpoints','Equivalencias, atributos y trazabilidad hacia la pestaña y fila de origen.','Endpoints'],technical:['Documentación técnica','Estructuras de datos y procedimientos que no deben contabilizarse como endpoints.','Datos técnicos']};
 function alertMsg(msg,type='success'){el('alert-area').innerHTML=`<div class="notice ${type==='error'?'error':type==='success'?'success':''}">${escape(msg)}</div>`;setTimeout(()=>{if(el('alert-area')?.textContent===msg)el('alert-area').innerHTML='';},13000);}
 function setLoading(loading,msg='Analizando archivo…'){el('import-status').textContent=loading?msg:'Listo.';el('load-button').disabled=loading;el('drive-public').disabled=loading;el('drive-private').disabled=loading;}
 function openImport(){el('import-modal').classList.remove('hidden');}
 function closeImport(){el('import-modal').classList.add('hidden');}
-function switchTab(tab){activeTab=tab;page=1;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();}
+function switchTab(tab){activeTab=tab;page=1;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='documents');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();}
 async function loadWorkbook(bytes,origin){
  setLoading(true,'Leyendo las hojas y normalizando información…');
- try{const sheets=await parseXlsx(bytes);const candidate=buildModel(sheets,origin);const newHierarchy=buildHierarchy(candidate);
+ try{const sheets=await parseXlsx(bytes);const d=parseDocumentCatalog(sheets,documentColumnMapping);if(d.found)receiveDocumentCatalog(sheets,origin);const candidate=buildModel(sheets,origin);const newHierarchy=buildHierarchy(candidate);
   if(!candidate.sheetCount||(!candidate.systemsRows&&!candidate.endpoints.length))throw new Error('El Excel no contiene las hojas de seguimiento esperadas.');
   model=candidate;hierarchy=newHierarchy;validationEvidence=calculateValidation(sheets,CATALOGO_FIJO);excelNotes=extractExcelObservations(candidate,newHierarchy);currentSource=origin;page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';drawerId=null;
   expandedSystems=new Set();expandedIntegrations=new Set();
@@ -72,7 +78,7 @@ async function loadPublicDrive(){
 }
 
 function googleScript(){return new Promise((resolve,reject)=>{if(window.google?.accounts?.oauth2)return resolve();const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar el servicio de autenticación de Google.'));document.head.appendChild(script);});}
-async function authorizeGoogle(){const clientId=window.DASHBOARD_GOOGLE_CLIENT_ID;if(!clientId)throw new Error('Para leer Drive privado configura el ID de cliente OAuth en config.js.');await googleScript();accessToken=await new Promise((resolve,reject)=>{const client=window.google.accounts.oauth2.initTokenClient({client_id:clientId,scope:'https://www.googleapis.com/auth/drive.readonly',callback:result=>result.error?reject(new Error(result.error)):resolve(result.access_token)});googleClient=client;client.requestAccessToken({prompt:'consent'});});return accessToken;}
+async function authorizeGoogle(){const clientId=window.DASHBOARD_GOOGLE_CLIENT_ID;if(!clientId)throw new Error('Para leer Drive privado configura el ID de cliente OAuth en config.js.');await googleScript();accessToken=await new Promise((resolve,reject)=>{const client=window.google.accounts.oauth2.initTokenClient({client_id:clientId,scope:'openid email https://www.googleapis.com/auth/drive.readonly',callback:result=>result.error?reject(new Error(result.error)):resolve(result.access_token)});googleClient=client;client.requestAccessToken({prompt:'consent'});});return accessToken;}
 async function loadPrivateDrive({background=false}={}){
  if(driveBusy)return;driveBusy=true;
  try{
@@ -115,6 +121,8 @@ function refreshGoogle(){
 
 async function loadTacticalWorkbook(bytes,origin){
  const sheets=await parseXlsx(bytes);
+ const foundDocumentCatalog=parseDocumentCatalog(sheets,documentColumnMapping);
+ if(foundDocumentCatalog.found||!documentCatalog?.found)receiveDocumentCatalog(sheets,origin);
  const next=parseTactical(sheets);
  // Ambas pestañas pertenecen al mismo Excel privado. La falta de una no bloquea la otra.
  const mapped=parseVias(sheets,next,viaColumnMapping||{});
@@ -127,6 +135,219 @@ async function loadTacticalWorkbook(bytes,origin){
  if(!mapped.vias.some(v=>v.name===viaSelected))viaSelected=mapped.vias[0]?.name||'';
  render();return next;
 }
+function receiveDocumentCatalog(sheets,origin){
+ const result=parseDocumentCatalog(sheets,documentColumnMapping);
+ documentCatalog=result;documentSheets=sheets;documentOrigin=origin;
+ if(result.mapping && !Object.keys(result.mapping).some(k=>!['codigo','documento'].includes(k))){documentStateFilter='';documentTypeFilter='';documentSpecialtyFilter='';documentOwnerFilter='';}
+ documentError=result.error||'';
+ if(!result.documents.some(d=>d.id===documentSelectedId))documentSelectedId='';
+ return result;
+}
+async function loadDocumentFile(file){
+ if(!file)return;
+ if(!/\.xlsx$/i.test(file.name)){documentError='Selecciona un respaldo documental .xlsx.';renderDocumentCatalog();return;}
+ documentBusy=true;renderDocumentCatalog();
+ try{receiveDocumentCatalog(await parseXlsx(await file.arrayBuffer()),'Archivo local · '+file.name);}
+ catch(e){documentError=e.message||'No fue posible leer el Excel documental.';}
+ finally{documentBusy=false;renderDocumentCatalog();}
+}
+async function loadDocumentsPrivate(){
+ if(documentBusy||tacticalBusy)return;
+ // Cuando CatalogoDocumentos está en el mismo libro, se reutiliza una sola descarga.
+ if(!DOCUMENTS_GOOGLE_URL||DOCUMENTS_GOOGLE_URL===TACTICAL_GOOGLE_URL){
+  if(!TACTICAL_GOOGLE_URL){documentError='No está configurada una URL de Google Sheets para CatalogoDocumentos.';renderDocumentCatalog();return;}
+  return loadTacticalPrivate();
+ }
+ documentBusy=true;documentError='';renderDocumentCatalog();
+ try{
+  if(!accessToken)await authorizeGoogle();
+  const id=driveId(DOCUMENTS_GOOGLE_URL),headers={Authorization:`Bearer ${accessToken}`};
+  const response=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,mimeType`,{headers,cache:'no-store'});
+  if(!response.ok){if(response.status===401)accessToken='';throw new Error(`El catálogo documental no es accesible (${response.status}).`);}
+  const info=await response.json();
+  const source=info.mimeType==='application/vnd.google-apps.spreadsheet'
+    ?`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet`
+    :info.mimeType==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ?`https://www.googleapis.com/drive/v3/files/${id}?alt=media`:null;
+  if(!source)throw new Error('La fuente documental no es un Google Sheets ni un .xlsx válido.');
+  const download=await fetch(source,{headers,cache:'no-store'});
+  if(!download.ok){if(download.status===401)accessToken='';throw new Error(`Descarga documental fallida (${download.status}).`);}
+  receiveDocumentCatalog(await parseXlsx(await download.arrayBuffer()),'Drive privado · '+trim(info.name,55));
+ }catch(e){documentError=e.message||'No fue posible actualizar el catálogo documental.';alertMsg(documentError,'error');}
+ finally{documentBusy=false;renderDocumentCatalog();}
+}
+const documentSafeUrl=value=>{try{const u=new URL(String(value||'').trim());return ['https:','http:'].includes(u.protocol)?u.href:'';}catch{return '';}};
+function documentCatalogDiagnostics(){
+ const diag=documentCatalog?.diagnostic;
+ if(!diag?.found)return `<div class="doc-diagnostic panel"><h3>Diagnóstico de la hoja</h3><p>No se encontró la pestaña <b>CatalogoDocumentos</b>. Hojas detectadas: ${escape((diag?.availableSheets||[]).join(', ')||'Ninguna')}.</p><p>Verifica que hayas añadido la pestaña en el mismo archivo del Resumen táctico, o configura <code>DASHBOARD_DOCUMENTS_SOURCE.url</code> si está en otro libro.</p></div>`;
+ const headerRowNumber=(documentColumnMapping?.headerRow??diag.headerRow)+1;
+ const fields=[['documento','Nombre Documento (B) *'],['codigo','Cod Documento (A)'],['version','Versión'],['tipo','Tipo'],['estado','Estado'],['responsable','Responsable'],['especialidad','Especialidad'],['fecha','Fecha'],['enlace','Enlace'],['observaciones','Observaciones']];
+ const opts=(key)=>`<option value="">${key==='documento'?'Selecciona una columna':'No asociar'}</option>`+diag.columns.map(col=>`<option value="${col.index}" ${(documentCatalog?.mapping?.[key]===col.index)?'selected':''}>${col.letter}${col.header?' · '+escape(trim(col.header,38)):''}</option>`).join('');
+ const preview=(diag.preview||[]).map(row=>`<tr><th>${row.row}</th>${diag.columns.map((col,idx)=>`<td>${escape(trim(row.values[idx],85))}</td>`).join('')}</tr>`).join('');
+ return `<div class="doc-diagnostic panel"><div class="doc-diagnostic-head"><h3>Diagnóstico y correspondencia de columnas</h3><span>${escape(diag.sheet)} · ${diag.rows} filas</span></div><p>Para tu hoja actual: <b>A = Cod Documento</b> y <b>B = Nombre Documento</b>. El nombre es obligatorio. Este ajuste no altera Google Sheets.</p><form id="document-mapping-form" class="doc-mapping"><label>Fila de encabezados<input class="input" type="number" min="1" max="${diag.rows}" name="headerRow" value="${headerRowNumber}" required></label>${fields.map(([key,label])=>`<label>${label}<select class="select" name="${key}" ${key==='documento'?'required':''}>${opts(key)}</select></label>`).join('')}</form><div class="button-row"><button class="btn btn-primary btn-sm" data-action="docs-map-apply">Aplicar correspondencias</button><button class="btn btn-light btn-sm" data-action="docs-map-auto">Reconocer automáticamente</button></div><div class="doc-table-wrap"><table class="doc-preview"><thead><tr><th>Fila</th>${diag.columns.map(c=>`<th>${c.letter}</th>`).join('')}</tr></thead><tbody>${preview}</tbody></table></div></div>`;
+}
+function activeDocument(){return documentCatalog?.documents.find(d=>d.id===documentSelectedId)||null;}
+function focusDocumentActionFeedback(){
+ // Solo desplaza lo mínimo para hacer visible el aviso junto al registro editado.
+ // Nunca apunta al aviso global ni al encabezado de Control documental.
+ const notice=el('view-documents')?.querySelector('[data-document-feedback]');
+ if(notice)notice.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
+}
+function duplicateDocumentCode(doc){return !!doc?.codigo&&(documentCatalog?.documents||[]).filter(d=>norm(d.codigo)===norm(doc.codigo)).length>1;}
+async function incidentRequest(path,options={}){
+ if(!accessToken)throw new Error('Autoriza tu cuenta de Google para utilizar la bitácora.');
+ const response=await fetch(path,{...options,cache:'no-store',headers:{Authorization:`Bearer ${accessToken}`,...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
+ let data={};try{data=await response.json();}catch{}
+ if(!response.ok){if(response.status===401){accessToken='';incidentAuthorized=false;}throw new Error(data.error||`Error HTTP ${response.status}.`);}
+ return data;
+}
+async function loadIncidentsForDocument(doc){
+ if(!doc||!doc.codigo||duplicateDocumentCode(doc))return;
+ const code=String(doc.codigo).trim().toLocaleUpperCase('es');
+ incidentCode=code;incidentItems=[];incidentEvents=[];incidentError='';incidentLimited=false;documentReview=null;documentReviewHistory=[];
+ if(!accessToken){incidentAuthorized=false;renderDocumentCatalog();return;}
+ incidentLoading=true;renderDocumentCatalog();
+ try{
+  const result=await incidentRequest(`/api/incidencias?documento=${encodeURIComponent(code)}`);
+  if(incidentCode!==code)return;
+  incidentItems=result.items||[];incidentEvents=result.events||[];incidentLimited=!!result.limited;incidentAuthorized=true;
+  documentReview=result.review||null;documentReviewHistory=result.reviewHistory||[];
+ }catch(err){if(incidentCode===code){incidentError=err.message;incidentAuthorized=false;}}
+ finally{if(incidentCode===code){incidentLoading=false;renderDocumentCatalog();}}
+}
+async function authorizeIncidents(){
+ try{if(!accessToken)await authorizeGoogle();const doc=activeDocument();if(doc)await loadIncidentsForDocument(doc);}
+ catch(err){incidentError=err.message;incidentAuthorized=false;renderDocumentCatalog();}
+}
+async function saveDocumentReview(form){
+ const doc=activeDocument();if(!doc?.codigo)return;
+ if(duplicateDocumentCode(doc)){incidentError='El código documental está duplicado. Corrige el catálogo antes de actualizar el seguimiento.';documentActionFeedback={scope:'review',type:'error',message:incidentError};renderDocumentCatalog();focusDocumentActionFeedback();return;}
+ const fields=Object.fromEntries(new FormData(form).entries());
+ documentReviewDraft={...fields};
+ incidentBusy=true;incidentError='';documentActionFeedback=null;
+ const submitButton=form.querySelector('[type=submit]');if(submitButton)submitButton.disabled=true;
+ try{
+  if(!accessToken)await authorizeGoogle();
+  await incidentRequest('/api/incidencias',{
+   method:'PATCH',body:JSON.stringify({action:'document-review',documentCode:doc.codigo,documentName:doc.documento,
+    version:fields.version,status:fields.status,comment:fields.comment,expectedRevision:documentReview?.revision||0})
+  });
+  documentReviewDraft=null;
+  documentActionFeedback={scope:'review',type:'success',message:'Versión y estado documental guardados en Neon con auditoría.'};
+  await loadIncidentsForDocument(doc);
+ }catch(e){
+  incidentError=e.message;
+  documentActionFeedback={scope:'review',type:'error',message:'No se pudo guardar el seguimiento documental: '+e.message};
+ }finally{
+  incidentBusy=false;if(submitButton?.isConnected)submitButton.disabled=false;
+  renderDocumentCatalog();focusDocumentActionFeedback();
+ }
+}
+async function saveIncident(form,kind){
+ const doc=activeDocument();if(!doc?.codigo)return;
+ const updating=kind==='update',commentOnly=kind==='comment',id=commentOnly?form.dataset.incidentComment:updating?form.dataset.incidentUpdate:'';
+ const scope=(updating||commentOnly)?'incident':'create';
+ if(duplicateDocumentCode(doc)){
+  incidentError='El código documental se encuentra duplicado. Corrige la fuente antes de registrar incidencias.';
+  documentActionFeedback={scope,incidentId:id,type:'error',message:incidentError};
+  renderDocumentCatalog();focusDocumentActionFeedback();return;
+ }
+ const values=Object.fromEntries(new FormData(form).entries());
+ const payload=commentOnly?{...values,id,expectedRevision:Number(form.dataset.revision),action:'comment'}:updating?{...values,id,expectedRevision:Number(form.dataset.revision),action:'update'}:{...values,documentCode:doc.codigo,documentName:doc.documento};
+ incidentBusy=true;incidentError='';documentActionFeedback=null;
+ const submitButton=form.querySelector('[type=submit]');if(submitButton)submitButton.disabled=true;
+ try{
+  if(!accessToken)await authorizeGoogle();
+  const result=await incidentRequest((updating||commentOnly)?`/api/incidencias?id=${encodeURIComponent(id)}`:'/api/incidencias',{method:(updating||commentOnly)?'PATCH':'POST',body:JSON.stringify(payload)});
+  const savedId=result.item?.id||id;
+  incidentCreateOpen=false;incidentEditingId='';incidentDraft={};
+  documentActionFeedback={scope:'incident',incidentId:savedId,type:'success',message:commentOnly?'Comentario incorporado al historial.':updating?'Atención registrada con auditoría.':'Incidencia registrada.'};
+  await loadIncidentsForDocument(doc);
+ }catch(e){
+  incidentError=e.message;
+  documentActionFeedback={scope,incidentId:id,type:'error',message:'Bitácora: '+e.message};
+ }finally{
+  incidentBusy=false;if(submitButton?.isConnected)submitButton.disabled=false;
+  renderDocumentCatalog();focusDocumentActionFeedback();
+ }
+}
+function documentExpandedDetail(selected,baseOnly){
+ const fields=baseOnly
+  ? [['Cod Documento',selected.codigo],['Nombre Documento',selected.documento]]
+  : [['Código',selected.codigo],['Versión',selected.versionLabel],['Tipo',selected.tipo],['Estado registrado',selected.statusLabel],['Responsable',selected.responsable],['Especialidad',selected.especialidad],['Fecha',selected.fecha]];
+ const extra=selected.extras?.length
+  ? `<details class="doc-extra"><summary>Otros atributos del Excel (${selected.extras.length})</summary><div class="doc-detail-grid">${selected.extras.map(e=>`<div><b>${escape(e.header)}</b><span>${escape(e.value)}</span></div>`).join('')}</div></details>`:'';
+ const incidents=duplicateDocumentCode(selected)
+  ? '<div class="notice error">Este código se repite en CatalogoDocumentos. Corrige el duplicado para evitar que dos documentos compartan la misma bitácora.</div>'
+  : renderIncidentSection({
+     document:selected,
+     items:incidentCode===String(selected.codigo).trim().toLocaleUpperCase('es')?incidentItems:[],
+     events:incidentEvents,
+     loading:incidentLoading,
+     error:incidentError,
+     authorized:incidentAuthorized,
+     createOpen:incidentCreateOpen,
+     editingId:incidentEditingId,
+     limited:incidentLimited,
+     busy:incidentBusy,
+     draft:incidentDraft,review:documentReview,reviewHistory:documentReviewHistory,reviewDraft:documentReviewDraft,feedback:documentActionFeedback
+    });
+ return `<div class="doc-detail doc-detail-inline" aria-label="Ficha y bitácora documental de ${escape(selected.documento)}">
+ <div class="doc-detail-head"><div><div class="eyebrow">FICHA DOCUMENTAL · FILA ${selected.row}</div><h3>${escape(selected.documento)}</h3></div><button class="btn btn-light btn-sm" data-action="docs-close-detail">Cerrar ficha</button></div>
+ <div class="doc-detail-grid">${fields.map(([k,v])=>`<div><b>${k}</b><span>${escape(v||'No informado')}</span></div>`).join('')}</div>
+ ${selected.observaciones?`<div class="doc-observations"><b>Observaciones de origen</b><p>${escape(selected.observaciones)}</p></div>`:''}
+ ${extra}
+ ${documentSafeUrl(selected.enlace)?`<a class="doc-open-link" href="${escape(documentSafeUrl(selected.enlace))}" target="_blank" rel="noopener noreferrer">Abrir documento de origen ↗</a>`:''}
+ ${incidents}</div>`;
+}
+function renderDocumentCatalog(){
+ const view=el('view-documents');if(!view)return;
+ // Mantener anclada la fila expandida aunque se regenere el HTML tras la petición API.
+ const expandedBefore=view.querySelector('.doc-expanded-row');
+ const expandedIdBefore=expandedBefore?.dataset.expandedDoc;
+ const topBefore=expandedBefore?.getBoundingClientRect().top;
+ const docs=documentCatalog?.documents||[];
+ const summary=documentCatalogSummary(docs);
+ const baseOnly=!!documentCatalog?.mapping && !Object.keys(documentCatalog.mapping).some(k=>!['codigo','documento'].includes(k));
+ const list=filterDocumentCatalog(docs,{query:documentQuery,estado:documentStateFilter,tipo:documentTypeFilter,especialidad:documentSpecialtyFilter,responsable:documentOwnerFilter});
+ const opt=(field,selected)=>`<option value="">Todos</option>`+[...new Set(docs.map(d=>field==='estado'?d.statusLabel:d[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')).map(v=>`<option value="${escape(v)}" ${v===selected?'selected':''}>${escape(v)}</option>`).join('');
+ const badges=summary.estados.map(st=>`<span class="doc-state-total">${escape(st)} <b>${docs.filter(d=>d.statusLabel===st).length}</b></span>`).join('');
+ const report=baseOnly?[['Documentos registrados',summary.records],['Códigos únicos',summary.codigosUnicos],['Sin código',summary.sinCodigo],['Códigos repetidos',summary.codigosRepetidos]]:[['Registros documentales',summary.records],['Documentos únicos',summary.documentos],['Con versión informada',summary.versiones],['Validados en la fuente',summary.validados]];
+ const header=`<section class="panel doc-intro"><div><div class="eyebrow">GESTIÓN DOCUMENTAL · ETAPAS 1 Y 2</div><h2>Catálogo documental</h2><p>${baseOnly?'Inventario de documentos basado en Cod Documento (A) y Nombre Documento (B).':'Inventario de documentos y atributos de CatalogoDocumentos.'} El catálogo se consulta desde Excel; las incidencias se registran en una base de datos independiente.</p><small>${documentOrigin?'Origen: '+escape(documentOrigin)+' · ':''}${documentCatalog?.readAt?'Lectura: '+new Date(documentCatalog.readAt).toLocaleString('es-PE'): 'Sin lectura registrada'}</small></div><div class="doc-intro-actions"><button class="btn btn-light" data-action="docs-refresh" ${documentBusy||tacticalBusy?'disabled':''}>${documentBusy||tacticalBusy?'Leyendo…':'↻ Actualizar documentos'}</button><label class="btn btn-light" for="document-local-file">Importar .xlsx</label><input type="file" id="document-local-file" accept=".xlsx" hidden></div></section>`;
+ if(!documentCatalog?.found){view.innerHTML=header+(documentError?`<div class="notice error">${escape(documentError)}</div>`:'')+documentCatalogDiagnosticsPlaceholder();return;}
+ const toolbar=`<section class="panel doc-filters ${baseOnly?'doc-filters-simple':''}"><label class="doc-search-label">Buscar<input class="input" id="document-search" placeholder="${baseOnly?'Buscar por código o nombre…':'Nombre, código, versión, responsable…'}" value="${escape(documentQuery)}"></label>${baseOnly?'':`<label>Estado<select class="select" id="document-status">${opt('estado',documentStateFilter)}</select></label><label>Tipo<select class="select" id="document-type">${opt('tipo',documentTypeFilter)}</select></label><label>Especialidad<select class="select" id="document-specialty">${opt('especialidad',documentSpecialtyFilter)}</select></label><label>Responsable<select class="select" id="document-owner">${opt('responsable',documentOwnerFilter)}</select></label>`}<button class="btn btn-light btn-sm" data-action="docs-clear">Limpiar filtros</button></section>`;
+ const selected=list.find(d=>d.id===documentSelectedId)||null;
+ const tableRows=list.map(d=>{
+  const expanded=selected?.id===d.id;
+  const label=expanded?'Ocultar ficha ↑':'Examinar →';
+  const toggle=`<button class="btn btn-light btn-sm" data-document-select="${escape(d.id)}" aria-expanded="${expanded}" aria-label="${expanded?'Cerrar':'Abrir'} ficha de ${escape(d.documento)}">${label}</button>`;
+  const row=baseOnly
+   ? `<tr class="${expanded?'doc-current-row':''}"><td>${escape(d.codigo||'Sin código')}</td><td class="doc-name-cell"><b>${escape(d.documento)}</b><small>Fila ${d.row}</small></td><td>${toggle}</td></tr>`
+   : `<tr class="${expanded?'doc-current-row':''}"><td class="doc-name-cell"><b>${escape(d.documento)}</b><small>Fila ${d.row}</small></td><td>${escape(d.codigo||'—')}</td><td>${escape(d.versionLabel)}</td><td>${escape(d.tipo||'—')}</td><td>${escape(d.responsable||'—')}</td><td><span class="doc-status-tag ${/^validado(?:\b|$)|^validada(?:\b|$)/.test(norm(d.estado))?'doc-validated':''}">${escape(d.statusLabel)}</span></td><td>${toggle}</td></tr>`;
+  return row+(expanded?`<tr class="doc-expanded-row" data-expanded-doc="${escape(d.id)}"><td colspan="${baseOnly?3:7}">${documentExpandedDetail(d,baseOnly)}</td></tr>`:'');
+ }).join('');
+ view.innerHTML=header+(documentError?`<div class="notice error">${escape(documentError)}</div>`:'')+(documentCatalog.warnings||[]).map(w=>`<div class="scope-notice">${escape(w)}</div>`).join('')+`<div class="doc-kpis">${report.map(([label,n])=>`<div class="doc-kpi"><span>${label}</span><strong>${number(n)}</strong></div>`).join('')}</div>${baseOnly?'':`<div class="doc-status-breakdown">${badges}</div>`}`+toolbar+`<section class="panel doc-register"><div class="doc-register-heading"><h3>Inventario de documentos</h3><span>Mostrando ${list.length} de ${docs.length}</span><button class="btn btn-light btn-sm" data-action="docs-config">${documentConfigOpen?'Ocultar configuración':'Configurar columnas'}</button></div><div class="doc-table-wrap"><table class="${baseOnly?'doc-simple-table':''}"><thead><tr>${baseOnly?'<th>Cod Documento</th><th>Nombre Documento</th><th>Detalle</th>':'<th>Documento</th><th>Código</th><th>Versión</th><th>Tipo</th><th>Responsable</th><th>Estado</th><th>Detalle</th>'}</tr></thead><tbody>${tableRows||`<tr><td colspan="${baseOnly?3:7}" class="doc-empty">No hay documentos para los filtros actuales.</td></tr>`}</tbody></table></div></section>`+(documentConfigOpen||documentCatalog.error?documentCatalogDiagnostics():'')+`<p class="doc-footnote">Fuente: ${escape(documentCatalog.sheet)} · ${baseOnly?'Columna A: Cod Documento · Columna B: Nombre Documento. Versión y estado se gestionan en Neon.':'Los atributos corresponden a las celdas de origen; este módulo no emite aprobaciones.'}</p>`;
+ if(expandedIdBefore && expandedIdBefore===documentSelectedId && Number.isFinite(topBefore)){
+  const expandedAfter=view.querySelector('.doc-expanded-row');
+  if(expandedAfter?.dataset.expandedDoc===expandedIdBefore){
+   const distance=expandedAfter.getBoundingClientRect().top-topBefore;
+   if(Math.abs(distance)>1)window.scrollBy({top:distance,behavior:'instant'});
+  }
+ }
+}
+function documentCatalogDiagnosticsPlaceholder(){return `<section class="panel doc-placeholder"><h3>Sin catálogo documental cargado</h3><p>${escape(documentError||'Presiona «Actualizar documentos» para leer CatalogoDocumentos. Si aún no existe en ese libro, se mostrará un diagnóstico con las hojas encontradas.')}</p>${documentCatalog?.diagnostic?.availableSheets?.length?`<p>Hojas encontradas: ${escape(documentCatalog.diagnostic.availableSheets.join(', '))}</p>`:''}<p>Se utiliza por defecto el libro privado del Resumen táctico. Para otra fuente, configura <code>DASHBOARD_DOCUMENTS_SOURCE.url</code> en <code>config.js</code>.</p></section>`;}
+function applyDocumentMapping(){
+ if(!documentSheets)return;
+ const form=el('document-mapping-form');if(!form)return;
+ const fd=new FormData(form),col=fd.get('documento');
+ if(col==null||col===''){alertMsg('Selecciona la columna Documento.','error');return;}
+ documentColumnMapping={headerRow:Math.max(0,Number(fd.get('headerRow'))-1)};
+ for(const field of ['documento','codigo','version','tipo','estado','responsable','especialidad','fecha','enlace','observaciones']){
+  const v=fd.get(field);if(v!=null&&v!=='')documentColumnMapping[field]=Number(v);
+ }
+ receiveDocumentCatalog(documentSheets,documentOrigin||'Documento cargado');documentConfigOpen=!!documentError;renderDocumentCatalog();
+}
+
 async function loadTacticalFile(file){
  if(!file)return;
  if(!/\.xlsx$/i.test(file.name)){tacticalError='Selecciona un archivo táctico .xlsx.';render();return;}
@@ -617,7 +838,7 @@ function removeNote(id){if(!confirm('¿Eliminar esta observación local? No podr
 function exportNotes(){const payload={schema:'pj-observaciones-v2',exportedAt:new Date().toISOString(),source:currentSource,observations:notes};const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='observaciones_integraciones_PJ.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);}
 async function importNotes(file){try{if(file.size>4*1024*1024)throw new Error('El respaldo supera el límite de 4 MB.');const json=JSON.parse(await file.text());const next=mergeObservationBackup(notes,json);if(saveNoteState(next)){render();alertMsg(`Respaldo importado: ${next.length} observaciones disponibles. Se conservaron registros preexistentes.`);}}catch(e){alertMsg('No se pudo importar el respaldo: '+e.message,'error');}}
 
-function render(){refreshSpecialtyUI();if(activeTab==='tactical')renderTactical();if(activeTab==='vias')renderVias();if(activeTab==='activity-flow')renderActivityFlow();if(activeTab==='systems')renderSystems();if(activeTab==='overview')renderOverview();if(activeTab==='integrations')renderIntegrations();if(activeTab==='endpoints')renderEndpoints();if(activeTab==='technical')renderTechnical();}
+function render(){refreshSpecialtyUI();if(activeTab==='tactical')renderTactical();if(activeTab==='vias')renderVias();if(activeTab==='activity-flow')renderActivityFlow();if(activeTab==='documents')renderDocumentCatalog();if(activeTab==='systems')renderSystems();if(activeTab==='overview')renderOverview();if(activeTab==='integrations')renderIntegrations();if(activeTab==='endpoints')renderEndpoints();if(activeTab==='technical')renderTechnical();}
 function inspectIntegration(name){integrationFilter=name;systemFilter='';technicalIntegrationFilter='';query='';stateFilter='';equivFilter='';switchTab('endpoints');const ids=(model?.endpoints||[]).filter(e=>norm(e.integration)===norm(name));if(!ids.length)alertMsg(`${name}: no tiene endpoints/operaciones documentados en las hojas de detalle.`, 'error');}
 function showComponents(name){const i=groups().find(x=>norm(x.name)===norm(name));if(!i)return;
  const rows=i.components.map(c=>`<tr><td><strong>${escape(c.component)}</strong><span class="col-secondary">${escape(c.componentType||'Tipo no indicado')}</span></td><td>${statusBadge(c.status)}<span class="col-secondary">${escape(c.rawStatus||'Sin estado')}</span></td><td>${escape(c.owner||'No indicado')}</td><td>${escape(c.attention||'No indicado')}</td><td>${escape(c.dependency||'No indicada')}</td><td>${escape(c.glpi||'—')}</td><td>${c.observationsGTI?`<span class="col-secondary">${escape(trim(c.observationsGTI,160))}</span><span class="col-secondary">Sistemas!N${c.row}</span>`:'—'}</td><td>${c.observationsSoftplan?`<span class="col-secondary">${escape(trim(c.observationsSoftplan,160))}</span><span class="col-secondary">Sistemas!O${c.row}</span>`:'—'}</td><td>Sistemas!${c.row}</td></tr>`).join('');
@@ -669,7 +890,8 @@ function init(){
  refreshSpecialtyUI();
  el('drawer-backdrop').addEventListener('click',closeDrawer);
  document.body.addEventListener('click',e=>{
-  const a=e.target.closest('[data-action]');if(a){const type=a.dataset.action;if(type==='open-import')openImport();else if(type==='tab-integrations')switchTab('integrations');else if(type==='tactical-refresh')loadTacticalPrivate();else if(type==='vias-refresh')loadTacticalPrivate();else if(type==='activity-refresh')loadTacticalPrivate();else if(type==='flow-expand'){const v=activityFlowData?.vias.find(v=>v.name===activitySelected);if(v)flowOpenedSteps=new Set(v.steps.map(s=>s.id));renderActivityFlow();}else if(type==='flow-collapse'){flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();}else if(type==='via-config-toggle'){viaConfigOpen=!viaConfigOpen;renderVias();}else if(type==='via-mapping-auto'){viaColumnMapping=null;viasData=viaRawSheets?parseVias(viaRawSheets,tacticalData):null;viaConfigOpen=!!viasData?.error;renderVias();}else if(type==='vias-export-one')exportViaSlides(false);else if(type==='vias-export-all')exportViaSlides(true);else if(type==='tactical-export')exportTacticalPpt();else if(type==='tactical-secondary'){tacticalSecondaryOpen=!tacticalSecondaryOpen;renderTactical();}else if(type==='tactical-clear'){tacticalStateFilter='Todos';tacticalCategoryFilter='todas';tacticalQuery='';renderTactical();}else if(type==='clear-catalog'){catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';render();}else if(type==='tab-systems')switchTab('systems');else if(type==='clear-filters'){query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';page=1;render();}else if(type==='close-drawer')closeDrawer();else if(type==='export-notes')exportNotes();else if(type==='import-notes')el('notes-import').click();return;}
+  const a=e.target.closest('[data-action]');if(a){const type=a.dataset.action;if(type==='open-import')openImport();else if(type==='incidents-refresh')loadIncidentsForDocument(activeDocument());else if(type==='incidents-auth')authorizeIncidents();else if(type==='incidents-new'){incidentCreateOpen=!incidentCreateOpen;incidentEditingId='';documentActionFeedback=null;renderDocumentCatalog();if(incidentCreateOpen)el('incident-create-form')?.querySelector('[name=title]')?.focus({preventScroll:true});}else if(type==='incident-edit'){incidentEditingId=incidentEditingId===a.dataset.incidentId?'':a.dataset.incidentId;incidentCreateOpen=false;documentActionFeedback=null;renderDocumentCatalog();}else if(type==='docs-refresh')loadDocumentsPrivate();else if(type==='docs-clear'){documentQuery='';documentStateFilter='';documentTypeFilter='';documentSpecialtyFilter='';documentOwnerFilter='';renderDocumentCatalog();}else if(type==='docs-close-detail'){documentSelectedId='';incidentCode='';incidentError='';documentActionFeedback=null;incidentCreateOpen=false;incidentDraft={};documentReviewDraft=null;documentReview=null;documentReviewHistory=[];incidentEditingId='';renderDocumentCatalog();}else if(type==='docs-config'){documentConfigOpen=!documentConfigOpen;renderDocumentCatalog();}else if(type==='docs-map-apply')applyDocumentMapping();else if(type==='docs-map-auto'){documentColumnMapping=null;if(documentSheets)receiveDocumentCatalog(documentSheets,documentOrigin);documentConfigOpen=!!documentError;renderDocumentCatalog();}else if(type==='tab-integrations')switchTab('integrations');else if(type==='tactical-refresh')loadTacticalPrivate();else if(type==='vias-refresh')loadTacticalPrivate();else if(type==='activity-refresh')loadTacticalPrivate();else if(type==='flow-expand'){const v=activityFlowData?.vias.find(v=>v.name===activitySelected);if(v)flowOpenedSteps=new Set(v.steps.map(s=>s.id));renderActivityFlow();}else if(type==='flow-collapse'){flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();}else if(type==='via-config-toggle'){viaConfigOpen=!viaConfigOpen;renderVias();}else if(type==='via-mapping-auto'){viaColumnMapping=null;viasData=viaRawSheets?parseVias(viaRawSheets,tacticalData):null;viaConfigOpen=!!viasData?.error;renderVias();}else if(type==='vias-export-one')exportViaSlides(false);else if(type==='vias-export-all')exportViaSlides(true);else if(type==='tactical-export')exportTacticalPpt();else if(type==='tactical-secondary'){tacticalSecondaryOpen=!tacticalSecondaryOpen;renderTactical();}else if(type==='tactical-clear'){tacticalStateFilter='Todos';tacticalCategoryFilter='todas';tacticalQuery='';renderTactical();}else if(type==='clear-catalog'){catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';render();}else if(type==='tab-systems')switchTab('systems');else if(type==='clear-filters'){query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';page=1;render();}else if(type==='close-drawer')closeDrawer();else if(type==='export-notes')exportNotes();else if(type==='import-notes')el('notes-import').click();return;}
+  const docSelect=e.target.closest('[data-document-select]');if(docSelect){const nextId=docSelect.dataset.documentSelect;const wasOpen=nextId===documentSelectedId;documentSelectedId=wasOpen?'':nextId;documentActionFeedback=null;incidentCreateOpen=!wasOpen;incidentDraft={};documentReviewDraft=null;documentReview=null;documentReviewHistory=[];incidentEditingId='';incidentAuthorized=false;incidentCode='';renderDocumentCatalog();if(!wasOpen)loadIncidentsForDocument(activeDocument());return;}
   const fstep=e.target.closest('[data-flow-step]');if(fstep){const id=fstep.dataset.flowStep;flowOpenedSteps.has(id)?flowOpenedSteps.delete(id):flowOpenedSteps.add(id);renderActivityFlow();return;}
   const fact=e.target.closest('[data-flow-activity]');if(fact){const id=fact.dataset.flowActivity;flowOpenedActivities.has(id)?flowOpenedActivities.delete(id):flowOpenedActivities.add(id);renderActivityFlow();return;}
   const tk=e.target.closest('[data-tactical-status]');if(tk){tacticalStateFilter=tacticalStateFilter===tk.dataset.tacticalStatus?'Todos':tk.dataset.tacticalStatus;renderTactical();return;}
@@ -690,9 +912,9 @@ function init(){
   const ex=e.target.closest('[data-export]');if(ex){exportCSV(ex.dataset.export);return;}
   const p=e.target.closest('[data-page]');if(p){page+=p.dataset.page==='next'?1:-1;render();return;}
  });
- document.body.addEventListener('input',e=>{if(e.target.id==='tactical-search'){tacticalQuery=e.target.value;const position=e.target.selectionStart;renderTactical();const input=el('tactical-search');input?.focus();try{input?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='catalog-search'){catalogSearch=e.target.value;const position=e.target.selectionStart;render();const target=el('catalog-search');target?.focus();try{target?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='search-filter'){query=e.target.value;page=1;const start=e.target.selectionStart;render();const next=el('search-filter');next?.focus();try{next?.setSelectionRange(start,start);}catch{}}});
- document.body.addEventListener('submit',e=>{if(e.target?.id==='via-column-form'){e.preventDefault();applyViaMapping(e.target);}});
- document.body.addEventListener('change',e=>{if(e.target.id==='flow-via'){activitySelected=e.target.value;flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();return;}if(e.target.id==='flow-severity'){activitySeverity=e.target.value;renderActivityFlow();return;}if(e.target.id==='via-filter'){viaSelected=e.target.value;renderVias();return;}if(e.target.id==='via-severity'){viaSeverity=e.target.value;renderVias();return;}if(e.target.id==='tactical-category-filter'){tacticalCategoryFilter=e.target.value;tacticalStateFilter='Todos';tacticalOpened=new Set();renderTactical();return;}if(e.target.id==='specialty-filter'){specialty=e.target.value==='laboral'?'laboral':'todas';page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';technicalFilter='';catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';closeDrawer();refreshSpecialtyUI();render();return;}if(e.target.id==='catalog-observation-filter'){catalogObserved=e.target.value;render();return;}if(e.target.id==='catalog-availability-filter'){catalogAvailability=e.target.value;render();return;}if(e.target.id==='catalog-link-filter'){catalogLinkFilter=e.target.value;render();return;}if(e.target.id==='status-filter'){stateFilter=e.target.value;page=1;render();}if(e.target.id==='equiv-filter'){equivFilter=e.target.value;page=1;render();}if(e.target.id==='integration-filter'){integrationFilter=e.target.value;page=1;render();}if(e.target.id==='system-filter'){systemFilter=e.target.value;integrationFilter='';technicalIntegrationFilter='';page=1;render();}if(e.target.id==='technical-integration-filter'){technicalIntegrationFilter=e.target.value;integrationFilter='';page=1;render();}if(e.target.id==='technical-filter'){technicalFilter=e.target.value;render();}});
+ document.body.addEventListener('input',e=>{if(e.target.closest?.('#document-review-form')){documentReviewDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.closest?.('#incident-create-form')){incidentDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.id==='document-search'){documentQuery=e.target.value;const pos=e.target.selectionStart;renderDocumentCatalog();const next=el('document-search');if(next){next.focus();next.setSelectionRange(pos,pos);}return;} if(e.target.id==='tactical-search'){tacticalQuery=e.target.value;const position=e.target.selectionStart;renderTactical();const input=el('tactical-search');input?.focus();try{input?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='catalog-search'){catalogSearch=e.target.value;const position=e.target.selectionStart;render();const target=el('catalog-search');target?.focus();try{target?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='search-filter'){query=e.target.value;page=1;const start=e.target.selectionStart;render();const next=el('search-filter');next?.focus();try{next?.setSelectionRange(start,start);}catch{}}});
+ document.body.addEventListener('submit',e=>{if(e.target?.id==='via-column-form'){e.preventDefault();applyViaMapping(e.target);}else if(e.target?.id==='document-review-form'){e.preventDefault();saveDocumentReview(e.target);}else if(e.target?.id==='incident-create-form'){e.preventDefault();saveIncident(e.target,'create');}else if(e.target?.matches('[data-incident-update]')){e.preventDefault();saveIncident(e.target,'update');}else if(e.target?.matches('[data-incident-comment]')){e.preventDefault();saveIncident(e.target,'comment');}});
+ document.body.addEventListener('change',e=>{if(e.target.closest?.('#document-review-form')){documentReviewDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.closest?.('#incident-create-form')){incidentDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.id==='document-local-file'){loadDocumentFile(e.target.files?.[0]);e.target.value='';return;}if(e.target.id==='document-status'){documentStateFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-type'){documentTypeFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-specialty'){documentSpecialtyFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-owner'){documentOwnerFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='flow-via'){activitySelected=e.target.value;flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();return;}if(e.target.id==='flow-severity'){activitySeverity=e.target.value;renderActivityFlow();return;}if(e.target.id==='via-filter'){viaSelected=e.target.value;renderVias();return;}if(e.target.id==='via-severity'){viaSeverity=e.target.value;renderVias();return;}if(e.target.id==='tactical-category-filter'){tacticalCategoryFilter=e.target.value;tacticalStateFilter='Todos';tacticalOpened=new Set();renderTactical();return;}if(e.target.id==='specialty-filter'){specialty=e.target.value==='laboral'?'laboral':'todas';page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';technicalFilter='';catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';closeDrawer();refreshSpecialtyUI();render();return;}if(e.target.id==='catalog-observation-filter'){catalogObserved=e.target.value;render();return;}if(e.target.id==='catalog-availability-filter'){catalogAvailability=e.target.value;render();return;}if(e.target.id==='catalog-link-filter'){catalogLinkFilter=e.target.value;render();return;}if(e.target.id==='status-filter'){stateFilter=e.target.value;page=1;render();}if(e.target.id==='equiv-filter'){equivFilter=e.target.value;page=1;render();}if(e.target.id==='integration-filter'){integrationFilter=e.target.value;page=1;render();}if(e.target.id==='system-filter'){systemFilter=e.target.value;integrationFilter='';technicalIntegrationFilter='';page=1;render();}if(e.target.id==='technical-integration-filter'){technicalIntegrationFilter=e.target.value;integrationFilter='';page=1;render();}if(e.target.id==='technical-filter'){technicalFilter=e.target.value;render();}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeImport();}});
  render();
  if(DEFAULT_GOOGLE_URL&&!PRIVATE_GOOGLE_SOURCE&&CONFIG_SOURCE.autoLoad!==false)queueMicrotask(()=>loadPublicDrive());

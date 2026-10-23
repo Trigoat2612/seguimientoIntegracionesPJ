@@ -16,3 +16,11 @@ window.DASHBOARD_TACTICAL_SOURCE = Object.freeze({
   sheet: 'Seguimiento',
   access: 'private'
 });
+
+// Nueva fase: CatalogoDocumentos. URL vacía reutiliza el Excel privado del Resumen táctico.
+// Si está en otro Google Sheets privado, coloca aquí su URL (sin client_secret).
+window.DASHBOARD_DOCUMENTS_SOURCE = Object.freeze({
+  url: '',
+  sheet: 'CatalogoDocumentos',
+  access: 'private'
+});

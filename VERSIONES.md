@@ -173,3 +173,66 @@
 - En la diapositiva de **no priorizadas** se retiró el bloque **Manual** para aprovechar mejor el espacio.
 - Las clasificaciones adicionales (**Ciclo 2**, **Ciclo 2/3**, **Funcionalidad nativa del sistema**, **No aplica integración**) ahora se distribuyen en una retícula 2×2 de mayor tamaño, más legible.
 - Se redujo la densidad tipográfica y se ajustó el número de columnas internas por panel para mejorar lectura.
+
+
+## V1.13.0 – Catálogo documental (fase 1)
+- Nueva pestaña Control documental.
+- Lector flexible y diagnóstico para CatalogoDocumentos.
+- Búsqueda, filtros, ficha de atributos, controles de calidad de fuente y lectura privada/reaprovechamiento OAuth.
+- Carga local alternativa del catálogo. Preserva el resto de las funcionalidades y la V1.10.3 como referencia estable histórica.
+- No se implementa todavía la edición de incidencias o aprobación de documentos.
+
+
+## V1.13.1 · Esquema actual de CatalogoDocumentos
+
+La hoja inicial tiene únicamente dos columnas, con encabezados reconocidos automáticamente:
+
+| Columna | Encabezado exacto | Función |
+| --- | --- | --- |
+| A | `Cod Documento` | Identificador documental para futuras incidencias |
+| B | `Nombre Documento` | Nombre visible y seleccionable en el catálogo |
+
+- La lista, búsqueda y ficha documental priorizan código y nombre.
+- El resumen usa **Documentos registrados**, **Códigos únicos**, **Sin código** y **Códigos repetidos**.
+- No se muestran indicadores de versión ni de validación mientras esos datos no existan en la fuente.
+- La lectura avisa de códigos vacíos y repetidos, sin borrar filas ni corregir información por su cuenta.
+- Se conservan los campos opcionales del lector por si la hoja se amplía en el futuro; no son obligatorios.
+- La fase 1 sigue siendo **solo lectura**. La bitácora persistente de incidencias es una fase posterior.
+
+### V1.14.0 — Etapa 2, bitácora documental
+- API `/api/incidencias`: consulta por código, creación y actualización con control de acceso OAuth y lista de editores.
+- Persistencia Neon y `bitacora-schema.sql`, historial de eventos de creación, comentario y modificación.
+- Formulario de observaciones por documento, filtro por código, responsables, fechas compromiso y evidencias HTTPS.
+- Mantiene catálogo documental de A/B, resto del tablero y exportaciones PowerPoint existentes.
+- Requiere configurar variables privadas y ejecutar migración en Neon antes de su uso real.
+
+## V1.14.1 · Corrección de Cod Documento
+- `Cod Documento` conserva la distinción `4.1` / `4.10` / `4.100` cuando el origen es texto o contiene un formato numérico recuperable.
+- Importación XLSX: lectura de formatos de celda de `CatalogoDocumentos`, incluidos los formatos numéricos estándar de Excel.
+- Aviso y bloqueo preventivo de bitácora para códigos numéricos ambiguos (ceros originales irrecuperables).
+- API de bitácora: exige que `documentCode` se envíe como cadena y no como número.
+- Esquema Neon y OAuth sin cambios.
+
+
+## V1.14.2 · Detalle en línea y edición habilitada de la bitácora
+- Ficha documental expandida bajo la fila del inventario, sin desplazamiento al pie.
+- Formulario editable visible al examinar; autorización Google necesaria solo para consultar/guardar.
+- Eliminado bloqueo preventivo por formato numérico ambiguo cuando el código es único; se conserva detección de duplicados y lectura textual de códigos completos.
+- Borrador conservado durante recargas del panel y autenticación; estilos adaptables al espacio disponible.
+
+
+## V1.14.3 · Configuración real de bitácora y seguimiento en Neon
+
+- El catálogo de dos columnas omite avisos informativos genéricos por códigos numéricos y columnas inexistentes de estado o versión; permanece la protección contra códigos duplicados.
+- Nuevo diagnóstico local `/api/incidencias?diagnostico=1` con presencia booleana de las tres variables de servidor, sin exponer secretos y deshabilitado en producción.
+- La API distingue variables faltantes de los errores de autenticación de Google, migración SQL y conexión a Neon. El formulario muestra el error al lado de la ficha, sin deshabilitar permanentemente los botones.
+- Se incorporan `document_reviews` (versión/estado por `Cod Documento`) y `document_review_events` (auditoría); migración aditiva idempotente incluida.
+- La validación formal del documento queda fuera del alcance de esta etapa.
+
+
+## V1.14.4 · Avisos de bitácora en el contexto del registro
+- La confirmación de nueva incidencia se muestra junto a la incidencia recién creada.
+- Los avisos de comentarios y atención aparecen dentro de la incidencia afectada; versión y estado documental muestran sus mensajes en el formulario correspondiente.
+- Los errores de guardado se muestran en el mismo contexto del formulario, sin redireccionar al aviso general del encabezado.
+- Al regenerar el inventario después de una operación se mantiene la posición de la fila expandida y se desplaza la vista lo mínimo para mostrar la notificación.
+- No se modifica el esquema SQL, las variables de Vercel ni la configuración de Neon.

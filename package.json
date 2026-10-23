@@ -1,0 +1,9 @@
+{
+  "name": "tablero-integraciones-pj",
+  "version": "1.14.4",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "dependencies": {"@neondatabase/serverless": "^1.0.0"},
+  "scripts": {"test": "node --test tests/*.test.mjs"}
+}

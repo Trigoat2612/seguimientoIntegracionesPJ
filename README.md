@@ -338,3 +338,156 @@ Prueba: `node tests/via-pending-alignment.test.mjs`.
 - En la diapositiva de **no priorizadas** se retiró el bloque **Manual** para aprovechar mejor el espacio.
 - Las clasificaciones adicionales (**Ciclo 2**, **Ciclo 2/3**, **Funcionalidad nativa del sistema**, **No aplica integración**) ahora se distribuyen en una retícula 2×2 de mayor tamaño, más legible.
 - Se redujo la densidad tipográfica y se ajustó el número de columnas internas por panel para mejorar lectura.
+
+
+## V1.13.0 · Control documental – Primera etapa
+
+### Nueva pestaña «Control documental»
+- Lee la pestaña **CatalogoDocumentos** de la fuente privada táctica, reutilizando la autorización OAuth configurada.
+- Si `CatalogoDocumentos` está en **otro** Google Sheets o Excel almacenado en Google Drive, configura `window.DASHBOARD_DOCUMENTS_SOURCE.url` en `config.js` con la URL completa. Si la URL queda vacía, se reutiliza el archivo del Resumen táctico.
+- Permite también **Importar .xlsx** de respaldo desde la vista documental, sin reemplazar las otras fuentes del tablero.
+- Visualiza nombre, código, versión, tipo, estado, responsable, especialidad, fecha y enlace, cuando esos atributos existan. Las columnas no reconocidas se conservan como **otros atributos** en la ficha individual.
+- Ofrece búsqueda general, filtros por estado, tipo, especialidad y responsable, y resúmenes de total de registros, documentos únicos, versiones registradas y estados validados *de origen*.
+- Incorpora **diagnóstico de filas y columnas** y mapeo manual cuando los encabezados del Excel no coinciden con los nombres reconocidos. No modifica la hoja.
+- Mantiene un identificador de registro `hoja:fila` para rastrear su origen. Los duplicados documentales no se borran automáticamente.
+- **Solo lectura (fase 1)**: no registra incidencias, no almacena aprobaciones, no modifica Google Sheets ni usa Neon. El estado mostrado es el del Excel, no una conformidad emitida por la aplicación.
+
+### Preparación de la hoja CatalogoDocumentos
+
+El campo **Documento** (o «Nombre del documento») es el único obligatorio para presentar registros.
+Se recomienda incorporar las siguientes columnas, de preferencia en la primera fila:
+
+`Código | Documento | Versión | Tipo de documento | Estado | Responsable | Especialidad | Fecha | Enlace | Observaciones`
+
+- Es una recomendación de esquema para la próxima etapa, no una exigencia de migración; puedes conservar los encabezados actuales y utilizar «Configurar columnas».
+- Si no existen columnas de versión, estado o responsable, se muestran como no informadas; **nunca se inventa un estado de validación**.
+- No se almacena el contenido privado del Excel en localStorage. El archivo se procesa en la memoria de la sesión del navegador.
+
+### Uso
+
+1. Abre **Control documental** desde el menú lateral.
+2. Haz clic en **Actualizar documentos** y autoriza tu cuenta de Google cuando se solicite. Si `CatalogoDocumentos` está en el libro táctico, se actualizarán también sus demás hojas existentes.
+3. Selecciona un registro con **Examinar** para consultar su ficha y los atributos de origen.
+4. Si aparecen encabezados no reconocidos, abre **Configurar columnas**, vincula Documento y las demás columnas disponibles y aplica las correspondencias.
+5. Para importar un respaldo, utiliza **Importar .xlsx** (debe contener la pestaña `CatalogoDocumentos`).
+
+La siguiente etapa incorporará una bitácora persistente de incidencias y auditoría por documento/versión. No se crea ni simula esta funcionalidad en V1.13.0.
+
+
+## V1.13.1 · Esquema actual de CatalogoDocumentos
+
+La hoja inicial tiene únicamente dos columnas, con encabezados reconocidos automáticamente:
+
+| Columna | Encabezado exacto | Función |
+| --- | --- | --- |
+| A | `Cod Documento` | Identificador documental para futuras incidencias |
+| B | `Nombre Documento` | Nombre visible y seleccionable en el catálogo |
+
+- La lista, búsqueda y ficha documental priorizan código y nombre.
+- El resumen usa **Documentos registrados**, **Códigos únicos**, **Sin código** y **Códigos repetidos**.
+- No se muestran indicadores de versión ni de validación mientras esos datos no existan en la fuente.
+- La lectura avisa de códigos vacíos y repetidos, sin borrar filas ni corregir información por su cuenta.
+- Se conservan los campos opcionales del lector por si la hoja se amplía en el futuro; no son obligatorios.
+- La fase 1 sigue siendo **solo lectura**. La bitácora persistente de incidencias es una fase posterior.
+
+## V1.14.0 — Etapa 2: bitácora de incidencias documentales
+
+La pestaña **Control documental** mantiene `CatalogoDocumentos` (A: Cod Documento, B: Nombre Documento) como catálogo de solo lectura. Al seleccionar **Examinar** se carga una bitácora independiente, persistente y auditada en Neon, asociada por el código del documento (normalizado). Se pueden crear incidencias, asignar severidad y responsable, comprometer fechas, registrar enlaces de evidencias HTTPS, actualizar estados y consultar el historial inmutable de cambios y comentarios. **Cerrar una incidencia no valida el documento**.
+
+### Activación obligatoria en Vercel / Neon
+
+1. Crea o selecciona tu base PostgreSQL en Neon y ejecuta `bitacora-schema.sql` en el SQL Editor.
+2. En Vercel → Project → Settings → Environment Variables, crea **solo del lado del servidor** `DATABASE_URL` (cadena Postgres SSL), `GOOGLE_OAUTH_CLIENT_ID` (el mismo identificador público de `config.js`) y `DOCUMENT_EDITOR_EMAILS` (correos permitidos separados por comas). Configúralas también en el entorno Preview si realizas pruebas allí. Nunca coloques `DATABASE_URL` en `config.js` ni lo incluyas en un repositorio.
+3. Instala las dependencias (`npm install`) y despliega el proyecto. Vercel reconocerá `api/incidencias.js` como función de servidor.
+4. En el navegador, autoriza Google de nuevo: ahora se solicitan los permisos `openid email` además de Drive de solo lectura. Selecciona un documento con código único, abre **Examinar** y entra en la bitácora.
+5. Para desarrollo local, utiliza `vercel dev` y variables privadas de `.env.local` o `vercel env pull .env.local`; **`python -m http.server` no ejecuta las funciones `/api`**. El ejemplo `.env.example` no contiene credenciales válidas.
+
+Sin base de datos, sin migración o sin lista de revisores, la bitácora mostrará un error y **no guardará nada**. Los documentos con códigos vacíos o duplicados no admiten creación de incidencias hasta su corrección. Google Sheets no se modifica.
+
+### Campos de una incidencia
+
+- Documento: código y nombre de origen.
+- Incidencia: título, descripción, severidad (Crítica / Alta / Media / Baja).
+- Seguimiento: estado (Abierta / En atención / Subsanada / En verificación / Cerrada / Reabierta), responsable / área, fecha compromiso, URL de evidencia.
+- Trazabilidad: correo autenticado, fecha de alta y última actualización, revisión optimista, comentario obligatorio para cambios, eventos con imagen anterior y posterior.
+
+**Controles de seguridad:** el backend comprueba un token OAuth válido del proyecto y un correo de la lista permitida en cada llamada, usa consultas parametrizadas y no recibe credenciales de base de datos desde el cliente. Los eventos no tienen rutas de borrado ni modificación. Para conservar los eventos ante acceso administrativo directo a la BD, limita permisos de escritura a un rol restringido y establece respaldos según las políticas institucionales. Las URLs de evidencia deben ser HTTPS y sus permisos siguen siendo responsabilidad de Google Drive.
+
+**Pendiente de habilitación real:** al no contar con credenciales privadas de Neon ni con los correos autorizados no se ha probado escritura en tu base ni conexión externa OAuth; se requiere configurar esos servicios en tu despliegue. Esta fase no incluye aprobación documental formal ni carga de archivos adjuntos desde el navegador.
+
+## V1.14.1 · Códigos documentales exactos (4.1 ≠ 4.10)
+
+**Cod Documento** se considera un identificador textual, no una cantidad numérica. Por tanto `4.1`, `4.10`, `4.100` y `04.10` son códigos distintos. Esto afecta al catálogo, su diagnóstico, el control de duplicados, la búsqueda y la clave con la que se consultan y registran incidencias en Neon.
+
+- Se conserva el código original cuando la celda A de `CatalogoDocumentos` es de tipo **texto**.
+- Se recupera la representación visible cuando un número conserva un formato Excel de decimales fijos: por ejemplo, valor interno `4.1` con formato `0.00` se lee como `4.10`.
+- Cuando la celda es numérica con formato general, **no** se intenta adivinar un cero ya perdido. Se presenta una advertencia y se bloquea la asociación de incidencias a ese código ambiguo, hasta corregir el catálogo.
+- La API exige `documentCode` de tipo cadena de texto. El esquema existente `document_incidents.document_code VARCHAR(100)` ya es compatible; **no necesita migración**.
+
+### Recomendación para Google Sheets
+
+1. Selecciona la columna **A: Cod Documento** en `CatalogoDocumentos`.
+2. Usa **Formato → Número → Texto sin formato** (en Excel, formato de celda **Texto**).
+3. **Vuelve a introducir los valores originales**, especialmente `4.10`, `4.100` y códigos con ceros iniciales. Cambiar el formato después de una conversión numérica **no restaura** los ceros eliminados.
+4. Actualiza `Control documental` y comprueba que `4.1` y `4.10` aparecen por separado.
+
+**Registros anteriores:** si ya se guardaron incidencias bajo un código equivocado (`4.1` en vez de `4.10`), esta actualización no mueve registros existentes de forma automática, porque no es posible determinar a qué documento pertenecen sin revisar las evidencias. Es necesario conciliar esos casos antes de trasladar o corregir las relaciones en la base de datos.
+
+
+## V1.14.2 · Bitácora accesible desde el inventario
+
+- En **Control documental**, el botón **Examinar** despliega la ficha y bitácora inmediatamente **debajo de la fila seleccionada**. Se puede cerrar con **Ocultar ficha** o **Cerrar ficha**. No se desplaza el detalle al final del inventario.
+- Al examinar un documento con código único, se abre el formulario **Registrar nueva incidencia** con título, severidad, responsable, fecha compromiso, descripción y enlace de evidencia opcional. El usuario puede redactar antes de autorizar Google; el guardado real exige una cuenta incluida en `DOCUMENT_EDITOR_EMAILS` y Neon configurado.
+- Se retiró el aviso rojo que bloqueaba automáticamente los documentos cuyos códigos estaban almacenados en Excel como números con formato General. **Solo se impide asociar incidencias si el código está vacío o duplicado**.
+- Los códigos de documento se pasan a la API **como texto**: `4.1` y `4.10` son diferentes cuando el origen conserva esa diferencia. **Si Excel transformó `4.10` en el número `4.1`, el sistema no puede recuperar ese cero perdido**; corrige la fuente para evitar asociaciones erróneas.
+- El borrador del formulario de nueva incidencia permanece en memoria mientras se actualiza o autoriza la bitácora, y se limpia al cambiar de documento o después de guardar.
+- No se modifican tablas SQL, variables de Neon ni permisos existentes. Continúa utilizando `npx vercel dev` para probar las rutas `/api`.
+
+
+## V1.14.3 · Catálogo sin avisos innecesarios, diagnóstico de Vercel Dev y seguimiento documental en Neon
+
+### A. Fuente documental
+
+`CatalogoDocumentos` solo necesita dos columnas: **A: Cod Documento** y **B: Nombre Documento**. Ya no aparecen los avisos globales sobre 25 códigos numéricos ni por ausencia de columnas **Versión** y **Estado**. Los datos numéricos se leen tal como llegaron: el sistema **no puede reconstruir ceros que Excel eliminó**. Conserva códigos únicos y completos en el origen (ejemplo `4.10` debe permanecer como texto).
+
+### B. Verificar `.env.local` en funciones Vercel
+
+El error `Configura GOOGLE_OAUTH_CLIENT_ID y DOCUMENT_EDITOR_EMAILS` aparece cuando **el proceso de la API** no recibe una o ambas variables, incluso si el HTML funciona en localhost. Para verificarlo sin revelar secretos:
+
+1. Detén `npx vercel dev`.
+2. Abre **la carpeta raíz** donde está `package.json`; comprueba `.env.local` con las tres claves exactas `DATABASE_URL`, `GOOGLE_OAUTH_CLIENT_ID`, `DOCUMENT_EDITOR_EMAILS`. No pegues ni publiques sus valores.
+3. Si usas las variables del proyecto Vercel, entra a **Vercel → Settings → Environment Variables** y agrégalas al entorno **Development** del proyecto enlazado. Verifica su existencia con `npx vercel env ls development`. Ejecuta `npx vercel pull --environment=development` para actualizar el contexto local de `vercel dev` (sin sobrescribir a ciegas las variables privadas que ya hayas preparado en `.env.local`).
+4. Vuelve a ejecutar `npx vercel dev`. Abre `http://localhost:3000/api/incidencias?diagnostico=1`. Verás `ready`, `variables` y `missing`, con valores booleanos solamente. Nunca devuelve URLs, contraseñas, correos ni tokens. **Este diagnóstico se deshabilita en producción**.
+5. Si `ready` es `false`, comprueba que el directorio actual sea el enlazado, que los nombres coincidan exactamente y que las variables existan para **Development**. No repitas el guardado hasta obtener `ready: true`.
+6. Si `ready: true`, pulsa **Autorizar Google** con un correo incluido en `DOCUMENT_EDITOR_EMAILS`; después crea una incidencia. Un error de Google o de conexión a Neon se muestra por separado.
+
+### C. Nueva migración SQL (obligatoria para versión y estado documental)
+
+Si ya ejecutaste `bitacora-schema.sql` de V1.14.0/1.14.2, **no elimines las tablas**. Ejecuta una sola vez en Neon SQL Editor (rama correspondiente a `DATABASE_URL`):
+
+`bitacora-v1_14_3-migracion.sql`
+
+Crea `document_reviews` y `document_review_events`. Son tablas independientes de `document_incidents` y `document_incident_events`; no modifican ni eliminan las incidencias existentes. Si partes desde cero, el archivo `bitacora-schema.sql` actualizado incluye las cuatro tablas.
+
+Cada documento tiene los campos **Versión**, **Estado de revisión** (`Pendiente de revisión`, `En revisión`, `Observado`, `En subsanación`, `En verificación`) y **Motivo del cambio**. Se editan al pulsar **Examinar**, usando `Cod Documento` como clave, se guardan en Neon y cada modificación deja un evento de auditoría. **Validado** no se permite todavía, porque la aprobación formal pertenece a la etapa 3.
+
+**Comprobación de migración:**
+
+```sql
+SELECT table_name FROM information_schema.tables
+WHERE table_schema='public' AND table_name IN
+('document_incidents','document_incident_events','document_reviews','document_review_events')
+ORDER BY table_name;
+```
+
+Deben aparecer cuatro nombres de tabla. Para verificar una escritura real, guarda un estado en el tablero y consulta `SELECT document_code, document_version, review_status FROM document_reviews;`.
+
+**Pruebas:** `npm test` valida reglas y UI con datos simulados. No sustituye una prueba real con tu OAuth y Neon; para esa prueba usa `npx vercel dev` y comprueba que aparecen registros en SQL Editor.
+
+
+## V1.14.4 · Avisos de bitácora en el contexto del registro
+- La confirmación de nueva incidencia se muestra junto a la incidencia recién creada.
+- Los avisos de comentarios y atención aparecen dentro de la incidencia afectada; versión y estado documental muestran sus mensajes en el formulario correspondiente.
+- Los errores de guardado se muestran en el mismo contexto del formulario, sin redireccionar al aviso general del encabezado.
+- Al regenerar el inventario después de una operación se mantiene la posición de la fila expandida y se desplaza la vista lo mínimo para mostrar la notificación.
+- No se modifica el esquema SQL, las variables de Vercel ni la configuración de Neon.
