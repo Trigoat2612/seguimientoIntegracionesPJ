@@ -1,5 +1,5 @@
 /** Estado del documento, distinto del estado de sus incidencias. La aprobación final es etapa 3. */
-export const DOCUMENT_REVIEW_STATES=Object.freeze(['Pendiente de revisión','En revisión','Observado','En subsanación','En verificación']);
+export const DOCUMENT_REVIEW_STATES=Object.freeze(['Programado','En proceso de firma','Validado']);
 export function validateReviewUpdate(input){
  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Solicitud inválida de seguimiento documental.');
  if(typeof input.documentCode!=='string')throw new Error('El código documental debe ser texto.');
