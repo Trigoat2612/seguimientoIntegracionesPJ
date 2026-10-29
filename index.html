@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0c1829" />
-  <meta name="description" content="Tablero de seguimiento de integraciones y endpoints. Procesamiento Excel local y actualización desde Google Drive." />
-  <title>Control de integraciones · PJ</title>
+  <meta name="description" content="Seguimiento de integraciones del EJE No Penal con actualización controlada." />
+  <title>Seguimiento de integraciones · PJ</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%230c1829'/%3E%3Ctext x='32' y='43' font-size='29' fill='white' font-family='Arial' font-weight='bold' text-anchor='middle'%3EPJ%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css" />
   <script src="./config.js"></script>
@@ -15,34 +15,40 @@
     <aside class="sidebar">
       <div class="brand"><div class="brand-icon">PJ</div><div><strong>Integraciones</strong><small>Control y seguimiento</small></div></div>
       <div class="sidebar-label">ESPACIO DE TRABAJO</div>
-      <nav class="nav">
-        <button class="nav-item active" data-tab="overview"><span class="nav-ico">▣</span> Resumen ejecutivo</button>
-        <button class="nav-item" data-tab="tactical"><span class="nav-ico">▥</span> Resumen táctico</button>
+      <nav class="nav" aria-label="Módulos del tablero">
+        <button class="nav-item active" data-tab="tactical"><span class="nav-ico">▥</span> Resumen táctico</button>
         <button class="nav-item" data-tab="vias"><span class="nav-ico">▦</span> Integraciones por vía</button>
         <button class="nav-item" data-tab="activity-flow"><span class="nav-ico">⌁</span> Flujo de actividades</button>
-        <button class="nav-item" data-tab="documents"><span class="nav-ico">▤</span> Control documental</button>
-        <button class="nav-item" data-tab="systems"><span class="nav-ico">◈</span> Sistemas <span id="sidebar-systems">—</span></button>
-        <button class="nav-item" data-tab="integrations"><span class="nav-ico">▤</span> Integraciones <span id="sidebar-integrations">—</span></button>
-        <button class="nav-item" data-tab="endpoints"><span class="nav-ico">⌘</span> Endpoints <span id="sidebar-endpoints">—</span></button>
-        <button class="nav-item" data-tab="technical"><span class="nav-ico">▥</span> Datos técnicos</button>
+        <button class="nav-item" data-tab="documents"><span class="nav-ico">▤</span> Documentos Clave</button>
+        <button class="nav-item" id="sync-navigation" data-tab="sync"><span class="nav-ico">↻</span> Sincronización de datos</button>
+        <details class="nav-dev" id="dev-menu">
+          <summary class="nav-dev-toggle"><span class="nav-ico">▸</span> En desarrollo <span class="nav-dev-badge">5</span></summary>
+          <div class="nav-dev-items">
+            <button class="nav-item" data-tab="overview"><span class="nav-ico">▣</span> Resumen ejecutivo</button>
+            <button class="nav-item" data-tab="systems"><span class="nav-ico">◈</span> Sistemas <span id="sidebar-systems">—</span></button>
+            <button class="nav-item" data-tab="integrations"><span class="nav-ico">▤</span> Integraciones <span id="sidebar-integrations">—</span></button>
+            <button class="nav-item" data-tab="endpoints"><span class="nav-ico">⌘</span> Endpoints <span id="sidebar-endpoints">—</span></button>
+            <button class="nav-item" data-tab="technical"><span class="nav-ico">▥</span> Datos técnicos</button>
+          </div>
+        </details>
       </nav>
-      <div class="sidebar-bottom"><div class="sidebar-note"><span class="live-dot"></span> Fuente Google Drive <p>El archivo se procesa en tu navegador. Actualización configurable y carga local de respaldo.</p></div><div class="sidebar-sign">Proyecto EJE No Penal<br><span>Seguimiento técnico · V1.13.0 · base estable V1.10.3</span></div></div>
+      <div class="sidebar-bottom"><div class="sidebar-sign">Proyecto EJE No Penal<br><span>Seguimiento técnico · V1.15.5.2</span></div></div>
     </aside>
     <div class="main-shell">
-      <header class="topbar"><div class="breadcrumb">PROYECTO EJE NO PENAL <span>/</span> <b id="crumb">Resumen ejecutivo</b></div><div class="top-actions"><span id="source-pill" class="source-pill">Fuente Google configurada</span><button class="btn btn-light" id="refresh-now" title="Volver a leer el documento Google">↻ &nbsp; Actualizar Google</button><button class="btn btn-light" id="load-button">↥ &nbsp; Fuentes</button></div></header>
+      <header class="topbar"><div class="breadcrumb">PROYECTO EJE NO PENAL <span>/</span> <b id="crumb">Resumen táctico</b></div><div class="top-actions"><span id="source-pill" class="source-pill hidden" aria-hidden="true"></span><button class="btn btn-light hidden" id="access-neon" type="button" aria-hidden="true">Acceso administrativo</button></div></header>
       <main class="main-content">
-        <section class="specialty-filter-bar"><div class="specialty-filter-group"><label for="specialty-filter">Especialidad</label><select id="specialty-filter" class="select" aria-label="Filtrar por especialidad"><option value="todas" selected>Todas las integraciones</option><option value="laboral">Laboral · 36 integraciones</option></select></div><span class="specialty-selection" id="specialty-summary">Todas · sin filtro de especialidad</span></section><section class="page-intro"><div><div class="eyebrow">MONITOREO DE INTEROPERABILIDAD</div><h1 id="page-title">Panel de integraciones</h1><p id="page-subtitle">Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.</p></div><div class="updated" id="updated-text">Sin actualización registrada</div></section>
+        <section class="specialty-filter-bar"><div class="specialty-filter-group"><label for="specialty-filter">Especialidad</label><select id="specialty-filter" class="select" aria-label="Filtrar por especialidad"><option value="todas" selected>Todas las integraciones</option><option value="laboral">Laboral · 36 integraciones</option></select></div><span class="specialty-selection" id="specialty-summary">Todas · sin filtro de especialidad</span></section><section class="page-intro"><div><div class="eyebrow">MONITOREO DE INTEROPERABILIDAD</div><h1 id="page-title">Resumen táctico · Laboral</h1><p id="page-subtitle">Estado situacional por severidad, ciclo y tipo.</p></div><div class="updated" id="updated-text">Sin actualización registrada</div></section>
         <div id="alert-area" aria-live="polite"></div>
-        <section id="workspace"><div id="view-overview"></div><div id="view-tactical" class="hidden"></div><div id="view-vias" class="hidden"></div><div id="view-activity-flow" class="hidden"></div><div id="view-documents" class="hidden"></div><div id="view-systems" class="hidden"></div><div id="view-integrations" class="hidden"></div><div id="view-endpoints" class="hidden"></div><div id="view-technical" class="hidden"></div></section>
-        <footer class="footer">Catálogo fijo: Lista_Integraciones.xlsx · Sheet2 (36 filas). Seguimiento técnico: Google Drive privado o importación manual. <strong>El resumen táctico y el catálogo documental se actualizan desde las fuentes privadas configuradas. El estado del desarrollo no equivale a conformidad de pruebas.</strong></footer>
+        <section id="workspace"><div id="view-overview" class="hidden"></div><div id="view-tactical"></div><div id="view-vias" class="hidden"></div><div id="view-activity-flow" class="hidden"></div><div id="view-documents" class="hidden"></div><div id="view-sync" class="hidden"></div><div id="view-systems" class="hidden"></div><div id="view-integrations" class="hidden"></div><div id="view-endpoints" class="hidden"></div><div id="view-technical" class="hidden"></div></section>
+        <footer class="footer">Los datos se actualizan desde Sincronización de datos. <strong>El estado del desarrollo no equivale a conformidad de pruebas.</strong></footer>
       </main>
     </div>
   </div>
-  <div class="modal-backdrop hidden" id="import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title"><div class="import-modal"><div class="modal-header"><div><div class="eyebrow">ORIGEN DE DATOS</div><h2 id="import-title">Actualizar información</h2></div><button class="icon-button" id="close-import" aria-label="Cerrar">✕</button></div>
+  <div class="modal-backdrop hidden" id="import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title"><div class="import-modal"><div class="modal-header"><div><div class="eyebrow">ORIGEN DE DATOS</div><h2 id="import-title">Sincronización · Cargar fuente</h2></div><button class="icon-button" id="close-import" aria-label="Cerrar">✕</button></div>
     <div class="source-tabs"><button class="source-tab active" data-source="file">Archivo Excel</button><button class="source-tab" data-source="drive">Google Drive</button></div>
     <div id="pane-file" class="source-pane"><label class="drop-zone" id="drop-zone"><input type="file" id="file-input" accept=".xlsx" hidden><span class="upload-icon">↥</span><strong>Selecciona o arrastra un archivo .xlsx</strong><span>Admite el Excel de SOFTPLAN y nuevas versiones con la misma estructura.</span><span class="btn btn-primary">Elegir archivo</span></label><div class="info-tip">Los datos de solicitud/respuesta usados como ejemplo no se muestran ni se guardan en el tablero.</div></div>
-    <div id="pane-drive" class="source-pane hidden"><label class="field-label" for="drive-url">Enlace del documento Excel / Google Sheets en Drive</label><input id="drive-url" class="input" placeholder="https://drive.google.com/file/d/.../view" autocomplete="off"><p class="helper">Admite tanto un .xlsx alojado en Drive como una hoja Google Sheets nativa, exportando el libro completo con todas sus pestañas. Este documento privado requiere OAuth con la cuenta de Google autorizada. No se publicará ni se descargará mediante una API anónima.</p><div class="button-row"><button class="btn btn-primary" id="drive-public">Leer Drive público</button><button class="btn btn-light" id="drive-private">Autorizar y leer privado</button></div><div class="interval-row"><label><input type="checkbox" id="auto-refresh"> Actualizar automáticamente cada 15 minutos mientras el tablero esté abierto</label></div><div class="info-tip" id="drive-info">El enlace ya está preconfigurado. Si Google bloquea su lectura pública, no publiques datos judiciales: configura un Client ID OAuth en <code>config.js</code> y usa «Autorizar y leer privado».</div></div>
-    <div class="tactical-source-option"><h3>Fuente de resumen táctico</h3><p>Archivo privado independiente · pestañas «Seguimiento», «IntegracionesEtapa» y «EtapaActividadIntegracion». El nuevo módulo «Control documental» lee también «CatalogoDocumentos» cuando esté en este libro; puede configurarse una fuente privada separada en config.js. Se utiliza el OAuth existente.</p><button class="btn btn-light" id="tactical-private">↻ Autorizar / actualizar táctico</button><label class="btn btn-light" for="tactical-file">Importar respaldo táctico .xlsx</label><input id="tactical-file" type="file" accept=".xlsx" hidden></div>
+    <div id="pane-drive" class="source-pane hidden"><label class="field-label" for="drive-url">Enlace del documento Excel / Google Sheets en Drive</label><input id="drive-url" class="input" placeholder="https://drive.google.com/file/d/.../view" autocomplete="off"><p class="helper">Admite tanto un .xlsx alojado en Drive como una hoja Google Sheets nativa, exportando el libro completo con todas sus pestañas. Este documento privado requiere OAuth con la cuenta de Google autorizada. No se publicará ni se descargará mediante una API anónima.</p><div class="button-row"><button class="btn btn-primary" id="drive-public">Leer Drive público</button><button class="btn btn-light" id="drive-private">Autorizar y leer privado</button></div><div class="interval-row hidden"><label><input type="checkbox" id="auto-refresh"> Actualización automática deshabilitada</label></div><div class="info-tip" id="drive-info">El enlace ya está preconfigurado. Si Google bloquea su lectura pública, no publiques datos judiciales: configura un Client ID OAuth en <code>config.js</code> y usa «Autorizar y leer privado».</div></div>
+    <div class="tactical-source-option"><h3>Fuente de sincronización táctica</h3><p>Archivo privado independiente · pestañas «Seguimiento», «IntegracionesEtapa» y «EtapaActividadIntegracion». El módulo «Documentos Clave» lee también «CatalogoDocumentos» cuando esté en este libro; puede configurarse una fuente privada separada en config.js. Se utiliza el OAuth existente.</p><button class="btn btn-light" id="tactical-private">↻ Autorizar / actualizar táctico</button><label class="btn btn-light" for="tactical-file">Importar respaldo táctico .xlsx</label><input id="tactical-file" type="file" accept=".xlsx" hidden></div>
     <div class="modal-foot" id="import-status">No se han realizado cambios.</div>
   </div></div>
   <div class="drawer-backdrop hidden" id="drawer-backdrop"></div><aside class="details-drawer hidden" id="details-drawer" aria-label="Detalles del endpoint"><div id="drawer-content"></div></aside>

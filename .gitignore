@@ -6,4 +6,7 @@ node_modules/
 *.log
 client_secret*.json
 credentials*.json
+
+# Generado automaticamente por npm run build
+public/
 %LOCALAPPDATA%

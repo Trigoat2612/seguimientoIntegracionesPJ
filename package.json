@@ -1,9 +1,17 @@
 {
   "name": "tablero-integraciones-pj",
-  "version": "1.14.4",
+  "version": "1.15.5.2",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=20"},
-  "dependencies": {"@neondatabase/serverless": "^1.0.0"},
-  "scripts": {"test": "node --test tests/*.test.mjs"}
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/verify-build.mjs && node scripts/build-static.mjs",
+    "vercel-build": "npm run build"
+  }
 }

@@ -497,3 +497,41 @@
 .doc-incident>.doc-inline-feedback{margin:10px 0 12px}
 .doc-incident-form>.doc-inline-feedback{margin:12px 0 0}
 .doc-incident-form .doc-inline-feedback[role="status"]{color:#247a60}
+
+/* V1.15.0 · Sincronización preliminar, independiente del resto del dashboard. */
+.sync-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:16px}
+.sync-heading h2{font-size:19px;margin:6px 0}.sync-heading p,.sync-rules p{font-size:11.5px;line-height:1.7;color:#5e738a;max-width:760px}
+.sync-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:15px}
+.sync-summary>div{border:1px solid #e0e8f0;background:white;border-radius:10px;padding:17px;display:grid;gap:8px}
+.sync-summary span,.sync-card-meta span{color:#8095ab;font-size:10px}.sync-summary strong{font-size:13px;color:#183b55}
+.sync-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:16px}
+.sync-card{background:white;border:1px solid #dfe8f1;padding:18px;border-radius:12px;min-width:0}
+.sync-card-title{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.sync-card-title h3{margin:0 0 5px;color:#173956;font-size:14px}.sync-card-title span{font-size:10px;color:#8395a8}
+.sync-origin{background:#f2f7f9;color:#266a78!important;border-radius:20px;padding:6px 9px;white-space:nowrap}
+.sync-card>p{font-size:11px;color:#637890;line-height:1.6;min-height:36px;overflow-wrap:anywhere}
+.sync-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 0;margin-bottom:12px;border-top:1px solid #edf1f5;border-bottom:1px solid #edf1f5}
+.sync-card-meta>div{display:grid;gap:5px}.sync-card-meta strong{font-size:11px;color:#28475f}
+.sync-actions{display:flex;gap:7px;flex-wrap:wrap}.sync-feedback{margin-top:14px;padding:12px;border-radius:7px;background:#eef9f4;border-left:3px solid #33976e;color:#326752;font-size:11px;line-height:1.6}
+.sync-feedback-error{background:#fff4f3;border-color:#c9514e;color:#a23d3d}.sync-feedback p{margin:5px 0}.sync-feedback ul{padding-left:18px;margin:8px 0 0}.sync-details{font-weight:700}
+.sync-rules h3{font-size:14px;margin:0}.sync-rules p{margin-bottom:0}
+@media(max-width:950px){.sync-grid,.sync-summary{grid-template-columns:1fr}}@media(max-width:700px){.sync-heading{flex-direction:column}.sync-card-title{flex-wrap:wrap}}
+/* V1.15.1 · Controles aislados de migración del catálogo documental */
+.sync-doc-controls {border-top:1px solid var(--line, #dfe4eb);margin-top:12px;padding-top:12px;display:grid;gap:8px}
+.sync-doc-controls strong {font-size:12px;color:var(--text, #17335a)}
+.sync-doc-controls p,.sync-doc-controls small {font-size:11px;line-height:1.5;margin:0}
+.sync-doc-controls .sync-actions {flex-wrap:wrap;gap:7px}
+.doc-intro-actions {flex-wrap:wrap}
+
+/* V1.15.5: navegación operativa Neon y módulos secundarios plegables */
+.nav-dev{margin-top:10px;border-top:1px solid rgba(165,184,210,.14);padding-top:8px}
+.nav-dev-toggle{display:flex;align-items:center;gap:8px;padding:12px 13px;color:#b9c9dc;cursor:pointer;font-size:.90rem;font-weight:600;border-radius:9px;list-style:none;user-select:none}
+.nav-dev-toggle::-webkit-details-marker{display:none}
+.nav-dev-toggle:hover,.nav-dev[open]>.nav-dev-toggle{background:rgba(255,255,255,.07);color:white}
+.nav-dev[open]>.nav-dev-toggle .nav-ico{transform:rotate(90deg)}
+.nav-dev-items{display:flex;flex-direction:column;padding:2px 0 5px 13px}
+.nav-dev-items .nav-item{font-size:.87rem;min-height:34px;opacity:.84}
+.nav-dev-items .nav-item.active{opacity:1}
+.nav-dev-badge{margin-left:auto;background:rgba(255,255,255,.08);font-size:.73rem;border-radius:14px;padding:1px 7px;color:#bac5d5}
+.neon-readonly-indicator{display:inline-flex;align-items:center;border:1px solid #b5d3c6;background:#eaf7f0;color:#256445;border-radius:8px;padding:6px 10px;font-weight:650;font-size:.78rem}
+.neon-access-placeholder{padding:24px 26px;max-width:780px}.neon-access-placeholder h2{margin:8px 0}.neon-access-placeholder p{line-height:1.65}
+@media(max-width:768px){.nav-dev-items{padding-left:6px}.neon-access-placeholder{padding:16px}}

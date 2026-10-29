@@ -1,3 +1,61 @@
+# Versión 1.15.5.2 · Lectura sin inicio de sesión
+
+Resumen táctico, Integraciones por vía, Flujo de actividades y Documentos Clave cargan las publicaciones directamente, sin solicitar Google OAuth. La edición de Documentos Clave, así como la sincronización y publicación de datos, requiere una cuenta autorizada. Las pantallas operativas solo muestran «Datos publicados» y «Recargar vista», sin referencias técnicas a Neon, origen ni columnas. Ver [`GUIA_LECTURA_DIRECTA_V1_15_5_2.md`](GUIA_LECTURA_DIRECTA_V1_15_5_2.md).
+
+**Advertencia:** un despliegue público ofrece lectura pública de las API, incluyendo bitácoras. Proteger el acceso al sitio si contiene información privada. No hay cambios SQL.
+
+---
+
+# V1.15.5.1 · Identidad y lectura Neon sin permiso de Google Drive
+
+La consulta de **Resumen táctico, Integraciones por vía, Flujo de actividades y Documentos Clave** utiliza solo un token de **identidad** (`openid email`). La autorización de lectura de archivos privados de Google Drive se solicita **por separado y únicamente** desde Sincronización de datos. `DOCUMENT_EDITOR_EMAILS` conserva las operaciones de edición; `DASHBOARD_VIEWER_EMAILS` es opcional para usuarios de consulta sin edición. No hay acceso anónimo a Neon ni migración SQL nueva. Consulta [`GUIA_AUTENTICACION_V1_15_5_1.md`](GUIA_AUTENTICACION_V1_15_5_1.md).
+
+---
+
+# Actualización V1.15.5 · Neon como única fuente operativa
+
+Desde el inicio se abre Resumen táctico y se consultan las cuatro publicaciones de Neon (OAuth obligatorio). Google Sheets/Excel se utiliza únicamente dentro de **Sincronización de datos** para cargar, cotejar y publicar cambios. El catálogo de **Documentos Clave** conserva íntegra su bitácora, revisiones y comentarios. Los cinco módulos técnicos antiguos están en **En desarrollo**. Sin migración SQL adicional.
+
+**Instalación:** conservar `.env.local` y `.vercel/`; ejecutar `npm install`, `npm test`, `npm run build` y `npx vercel dev`. Si el navegador bloquea la autorización automática, pulsar **Autorizar acceso a Neon**. La lectura no se hace anónima.
+
+---
+
+> **Versión 1.15.4.1:** Corrige el botón «Publicar flujo en Neon»; consulta `GUIA_MIGRACION_V1_15_4_1.md`. No requiere SQL adicional.
+
+# V1.15.3 · Integraciones por vía en Neon (lectura opcional)
+
+- **Guía de instalación:** [`GUIA_MIGRACION_V1_15_3.md`](GUIA_MIGRACION_V1_15_3.md).
+- **SQL nuevo:** `integraciones-via-v1_15_3.sql`, aditivo sobre la V1.15.2.
+- **API:** `api/integraciones-via.js`, consultas, cotejo, publicación reversible y restauración a Google Sheets.
+- **Relaciones:** `route_integration_links` y `route_published_metadata` con procedencia, historial y estados derivados del Resumen táctico publicado.
+- **Presentación:** selector Google Sheets/Neon en la pestaña Integraciones por vía; conserva los filtros y PowerPoint del modelo anterior.
+- **Independencia:** Documentos Clave y Resumen táctico permanecen en Neon; Flujo de actividades continúa en Google Sheets.
+
+---
+
+# V1.15.2 · Resumen táctico en Neon (publicación reversible)
+
+- **Guía de instalación, validación y reversión:** [`GUIA_MIGRACION_V1_15_2.md`](GUIA_MIGRACION_V1_15_2.md).
+- **Migración SQL nueva, aditiva:** [`resumen-tactico-v1_15_2.sql`](resumen-tactico-v1_15_2.sql).
+- **Nuevo endpoint:** `api/resumen-tactico.js`; consultas de estado, registros, cotejo, publicación y regreso a Google Sheets.
+- **Modelos equivalentes:** `resumen-tactico-migracion.js` reutiliza `parseTactical`, bitácoras, estilos y reglas de severidad.
+- **Alcance:** filas 1–36 de Seguimiento, sin borrar datos adicionales del lote auditado.
+- **Compatibilidad:** Documentos Clave permanece en Neon; Integraciones por vía y Flujo de actividades siguen en Google Sheets. Las diapositivas tácticas continúan utilizando los modelos existentes.
+
+---
+
+# V1.15.0 · Línea base de migración gradual a Neon
+
+- **Hoja de ruta aprobada:** [`LINEA_BASE_DESARROLLO.md`](LINEA_BASE_DESARROLLO.md)
+- **Instalación y operación:** [`GUIA_MIGRACION_V1_15_0.md`](GUIA_MIGRACION_V1_15_0.md)
+- **Migración SQL adicional:** [`sincronizacion-v1_15_0.sql`](sincronizacion-v1_15_0.sql)
+- **Novedad:** pestaña «Sincronización de datos» con validación, comparación, importación preliminar e historial por hoja.
+- **Fuente operativa de todas las pestañas:** Google Sheets / Excel. No cambia en V1.15.0.
+- **Nueva denominación del módulo documental:** «Documentos Clave». Se mantiene la hoja `CatalogoDocumentos` sin renombrarla.
+- **Dependencias y servidor:** `npm install`, `npx vercel dev`, variables privadas existentes, Neon con migración aplicada.
+
+---
+
 # Tablero de Integraciones PJ · V1.11.0 — Flujo de actividades por vía
 
 > **Base estable preservada: V1.10.3** (pendientes alineados en PowerPoint). Esta V1.11.0 es una evolución funcional que no altera la V1.10.3.
@@ -491,3 +549,38 @@ Deben aparecer cuatro nombres de tabla. Para verificar una escritura real, guard
 - Los errores de guardado se muestran en el mismo contexto del formulario, sin redireccionar al aviso general del encabezado.
 - Al regenerar el inventario después de una operación se mantiene la posición de la fila expandida y se desplaza la vista lo mínimo para mostrar la notificación.
 - No se modifica el esquema SQL, las variables de Vercel ni la configuración de Neon.
+
+
+## V1.15.0.1 · Corrección del Output Directory de Vercel
+
+**Causa anterior:** `npm run build` solo verificaba sintaxis y no generaba los archivos estáticos que Vercel buscaba en `public`. Crear la carpeta vacía a mano no bastaba.
+
+**Corrección:** `npm run build` ejecuta `scripts/verify-build.mjs` y `scripts/build-static.mjs` para regenerar automáticamente `public/` con el HTML, CSS, módulos JavaScript del navegador, fondo institucional y librería PowerPoint. `vercel.json` declara explícitamente `outputDirectory: public` y `buildCommand: npm run build` para evitar discrepancias con ajustes anteriores del proyecto Vercel. Las funciones de servidor **siguen** en `api/*`, fuera de `public`.
+
+1. Sustituir los archivos del proyecto por esta versión, **sin eliminar tu `.env.local`** ni la configuración `.vercel/` enlazada. Si ya creaste una carpeta `public` vacía, puedes dejarla: el build la regenerará.
+2. En la carpeta raíz del proyecto ejecutar `npm install`, `npm run build`, `npm test` y `npx vercel dev`.
+3. Comprobar que existen `public/index.html`, `public/app.js`, `public/styles.css` y `public/vendor/pptxgen.bundle.js`; abrir la app en la URL local indicada y verificar `/api/incidencias?diagnostico=1`.
+4. Para producción, publicar los cambios en GitHub; Vercel ejecutará el mismo build. La carpeta generada `public/` está en `.gitignore` y no debe subirse al repositorio.
+
+**Seguridad:** no se publican archivos `.env*`, código servidor, esquemas SQL, pruebas, README ni `package.json` dentro de `public`. Las variables `DATABASE_URL`, `GOOGLE_OAUTH_CLIENT_ID` y `DOCUMENT_EDITOR_EMAILS` deben seguir configuradas en Development/Production según el entorno. No se requieren cambios en Neon ni nuevos comandos SQL.
+
+
+## V1.15.1 · Migración de Documentos Clave
+Sigue `GUIA_MIGRACION_V1_15_1.md`. Ejecuta `documentos-clave-v1_15_1.sql` después de `sincronizacion-v1_15_0.sql`; el catálogo pasa a Neon solo después de una publicación confirmada. Las incidencias y el resto de pestañas continúan sin cambios.
+
+
+## V1.15.1.1 · Corrección de longitud de bitácoras y controles de sincronización
+
+- **Seguimiento!G (Estado situacional)** admite hasta **120.000 caracteres** por celda; no se trunca el texto, se preservan saltos de línea y se mantiene intacta la copia inmutable.
+- **Seguimiento!M (Consideraciones)** admite hasta **60.000 caracteres**. Los campos breves tienen un límite de **12.000** y las demás columnas un límite seguro adaptado a su uso. Los otros módulos admiten hasta **24.000 caracteres** por celda, y el catálogo mantiene controles especiales para código y nombre.
+- Se revisó el libro táctico actual: G8=4.589, G9=4.353, G17=3.994, G18=3.210 y G19=2.637 caracteres. Estas cinco celdas superaban el máximo antiguo de 1.800. Ninguna otra columna de Seguimiento superaba 1.800.
+- El límite de carga total por importación se aumenta a **3,2 MB** (validación cliente/servidor), bajo el umbral de Vercel para solicitudes de funciones. Si el archivo supera el máximo, se informa de forma explícita y NO se recorta la información.
+- **Comparar** y **Guardar copia en Neon** se habilitan cuando su hoja de origen está cargada, sin depender de una consulta previa de estado. **Historial** abre la consulta a Neon aunque no exista un estado precargado. Si fallan autorización/SQL/conexión, se muestra el error dentro de su módulo.
+- Una importación guardada exitosamente **no se declara fallida** si únicamente falla la recarga posterior de indicadores.
+- Se añade a Validar un diagnóstico del máximo de caracteres de G y M y del tamaño real de la copia.
+- **No hay cambios de esquema SQL, credenciales, tablas o fuentes operativas.** Mantener los scripts de migración V1.15.0 y V1.15.1 ya aplicados en Neon Development. Google Sheets sigue siendo la fuente de lectura de los módulos no migrados.
+
+
+## V1.15.4 · Flujo de actividades a Neon
+
+Consulta `GUIA_MIGRACION_V1_15_4.md` para ejecutar `flujo-actividades-v1_15_4.sql`, importar `EtapaActividadIntegracion` desde el libro privado y realizar el cotejo antes de publicar. Los módulos anteriores mantienen sus fuentes y tablas existentes.

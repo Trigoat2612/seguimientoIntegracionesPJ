@@ -1,4 +1,8 @@
 import {parseXlsx} from './xlsx.js';
+import {renderSyncView,syncSourceFor,prepareSyncAction} from './sincronizacion-ui.js';
+import {SYNC_MODULES} from './sincronizacion-modelo.js';
+import {keyDocumentsAsSheets} from './documentos-clave-migracion.js';
+import {tacticalStylesFromSheets,extractTacticalEntries,tacticalParityReport,rehydrateTacticalFromNeon} from './resumen-tactico-migracion.js';
 import {parseDocumentCatalog,inspectDocumentCatalog,documentCatalogSummary,filterDocumentCatalog} from './catalogo-documentos.js';
 import {renderIncidentSection} from './bitacora-ui.js';
 import {parseTactical,getTacticalSummary,TACTICAL_STATES,TACTICAL_MAX_ROW,TACTICAL_CATEGORIES,tacticalMatchesCategory,tacticalCategoryCounts} from './tactical.js';
@@ -10,7 +14,9 @@ import {loadObservations,saveObservations,observationTargets,mergeObservationBac
 import {extractExcelObservations} from './excel-observations.js';
 import {exportTacticalSummaryPpt} from './ppt-export.js';
 import {parseVias,inspectViaSheet,getViaView,getAllViaViews,VIA_SEVERITY_OPTIONS} from './vias.js';
+import {extractViaEntries,viaParityReport,rehydrateViasFromNeon} from './integraciones-via-migracion.js';
 import {parseActividadFlujo,actividadView,ACTIVITY_SEVERITIES} from './actividad-flujo.js';
+import {extractFlowEntries,flowParityReport,rehydrateFlowFromNeon} from './flujo-actividades-migracion.js';
 import {exportViasPpt} from './via-ppt-export.js';
 const el=id=>document.getElementById(id);
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,22 +33,26 @@ const PRIVATE_GOOGLE_SOURCE=String(CONFIG_SOURCE.access||'public').toLowerCase()
 const REFRESH_MINUTES=Math.min(120,Math.max(5,Number(CONFIG_SOURCE.refreshMinutes)||15));
 const TACTICAL_GOOGLE_URL=String(window.DASHBOARD_TACTICAL_SOURCE?.url||'').trim();
 const DOCUMENTS_GOOGLE_URL=String(window.DASHBOARD_DOCUMENTS_SOURCE?.url||'').trim()||TACTICAL_GOOGLE_URL;
+let syncStatus=null,syncLoading=false,syncFeedback={},docMigrationStatus=null,tacticalMigrationStatus=null,viaMigrationStatus=null,flowMigrationStatus=null;
+let documentReadSource='neon',documentGoogleCatalog=null,documentNeonCatalog=null,documentNeonBatchId=null;
 let documentCatalog=null,documentSheets=null,documentOrigin='',documentColumnMapping=null,documentError='',documentBusy=false,documentQuery='',documentStateFilter='',documentTypeFilter='',documentSpecialtyFilter='',documentOwnerFilter='',documentSelectedId='',documentConfigOpen=false;
-let incidentDraft={},incidentCode='',incidentItems=[],incidentEvents=[],incidentLoading=false,incidentError='',incidentAuthorized=false,incidentCreateOpen=false,incidentEditingId='',incidentBusy=false,incidentLimited=false;
+let incidentDraft={},incidentCode='',incidentItems=[],incidentEvents=[],incidentLoading=false,incidentError='',incidentAuthorized=false,incidentCanEdit=false,incidentCreateOpen=false,incidentEditingId='',incidentBusy=false,incidentLimited=false;
 let documentReview=null,documentReviewHistory=[],documentReviewDraft=null,documentActionFeedback=null;
 let viasData=null,viaSelected='',viaSeverity='todas',viaExportBusy=false,viaRawSheets=null,viaColumnMapping=null,viaConfigOpen=false;
-let activityFlowData=null,activitySelected='',activitySeverity='todas',flowOpenedSteps=new Set(),flowOpenedActivities=new Set();
+let viaReadSource='neon',viaGoogleData=null,viaNeonData=null,viaError='';
+let activityFlowData=null,activityGoogleData=null,activityNeonData=null,activityReadSource='neon',activityError='',activitySelected='',activitySeverity='todas',flowOpenedSteps=new Set(),flowOpenedActivities=new Set();
+let tacticalReadSource='neon',tacticalGoogleData=null,tacticalNeonData=null,tacticalGoogleOrigin='';
 let tacticalData=null,tacticalBusy=false,tacticalError='',tacticalOrigin='',tacticalQuery='',tacticalStateFilter='Todos',tacticalCategoryFilter='todas',tacticalOpened=new Set(),tacticalSecondaryOpen=false,tacticalExportBusy=false;
 let specialty='todas',catalogSearch='',catalogObserved='todos',catalogAvailability='todos',catalogLinkFilter='todos',catalogExpanded=new Set();
 let validationEvidence=calculateValidation(new Map(),CATALOGO_FIJO);
 let driveBusy=false;
-let hierarchy=null,excelNotes=[],notes=loadObservations(),expandedSystems=new Set(),expandedIntegrations=new Set(),systemFilter='',technicalIntegrationFilter='',technicalFilter='',model=null,activeTab='overview',query='',stateFilter='',equivFilter='',integrationFilter='',page=1,sortMode='endpoints',currentSource='none',currentDriveUrl='',refreshTimer=null,refreshOn=false,accessToken='',googleClient=null,drawerId=null;
-const tabTitles={'documents':['Control documental','Catálogo y bitácora de incidencias por documento, con historial y trazabilidad.','Control documental'],'activity-flow':['Flujo de actividades · Laboral','Seguimiento por vía, paso y actividad con integraciones listas y pendientes.','Flujo de actividades'],vias:['Integraciones por vía · Laboral','Etapas procesales, integraciones listas y pendientes, con filtro de severidad.','Integraciones por vía'],tactical:['Resumen táctico · Laboral','Estado situacional filtrable por severidad, ciclo y tipo, con dependencias e hitos.','Resumen táctico'],systems:['Sistemas e integraciones','Desglose desde Sistemas a componentes de integración y endpoints, con observaciones por nivel.','Sistemas'],overview:['Panel de integraciones','Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.','Resumen ejecutivo'],integrations:['Integraciones por especialidad','Todas las integraciones del Excel técnico o las 36 de Laboral, seleccionables desde el filtro superior.','Integraciones'],endpoints:['Catálogo de endpoints','Equivalencias, atributos y trazabilidad hacia la pestaña y fila de origen.','Endpoints'],technical:['Documentación técnica','Estructuras de datos y procedimientos que no deben contabilizarse como endpoints.','Datos técnicos']};
+let hierarchy=null,excelNotes=[],notes=loadObservations(),expandedSystems=new Set(),expandedIntegrations=new Set(),systemFilter='',technicalIntegrationFilter='',technicalFilter='',model=null,activeTab='tactical',query='',stateFilter='',equivFilter='',integrationFilter='',page=1,sortMode='endpoints',currentSource='none',currentDriveUrl='',refreshTimer=null,refreshOn=false,accessToken='',driveToken='',sessionCanEdit=false,sessionEmail='',drawerId=null;
+const tabTitles={'sync':['Sincronización de datos','Único punto de carga, cotejo y publicación de actualizaciones en Neon.','Sincronización de datos'],'documents':['Documentos Clave','Catálogo y bitácora de incidencias por documento, con historial y trazabilidad.','Documentos Clave'],'activity-flow':['Flujo de actividades · Laboral','Seguimiento por vía, paso y actividad con integraciones listas y pendientes.','Flujo de actividades'],vias:['Integraciones por vía · Laboral','Etapas procesales, integraciones listas y pendientes, con filtro de severidad.','Integraciones por vía'],tactical:['Resumen táctico · Laboral','Estado situacional filtrable por severidad, ciclo y tipo, con dependencias e hitos.','Resumen táctico'],systems:['Sistemas e integraciones','Desglose desde Sistemas a componentes de integración y endpoints, con observaciones por nivel.','Sistemas'],overview:['Panel de integraciones','Visión consolidada de integraciones, endpoints, equivalencias técnicas y seguimiento.','Resumen ejecutivo'],integrations:['Integraciones por especialidad','Todas las integraciones del Excel técnico o las 36 de Laboral, seleccionables desde el filtro superior.','Integraciones'],endpoints:['Catálogo de endpoints','Equivalencias, atributos y trazabilidad hacia la pestaña y fila de origen.','Endpoints'],technical:['Documentación técnica','Estructuras de datos y procedimientos que no deben contabilizarse como endpoints.','Datos técnicos']};
 function alertMsg(msg,type='success'){el('alert-area').innerHTML=`<div class="notice ${type==='error'?'error':type==='success'?'success':''}">${escape(msg)}</div>`;setTimeout(()=>{if(el('alert-area')?.textContent===msg)el('alert-area').innerHTML='';},13000);}
-function setLoading(loading,msg='Analizando archivo…'){el('import-status').textContent=loading?msg:'Listo.';el('load-button').disabled=loading;el('drive-public').disabled=loading;el('drive-private').disabled=loading;}
+function setLoading(loading,msg='Analizando archivo…'){el('import-status').textContent=loading?msg:'Listo.';if(el('load-button'))el('load-button').disabled=loading;el('drive-public').disabled=loading;el('drive-private').disabled=loading;}
 function openImport(){el('import-modal').classList.remove('hidden');}
 function closeImport(){el('import-modal').classList.add('hidden');}
-function switchTab(tab){activeTab=tab;page=1;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='documents');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();}
+function switchTab(tab){activeTab=tab;page=1;if(['overview','systems','integrations','endpoints','technical'].includes(tab))el('dev-menu')?.setAttribute('open','');else el('dev-menu')?.removeAttribute('open');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='documents');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();if(tab==='sync'&&sessionCanEdit&&!syncLoading)refreshSyncStatus();}
 async function loadWorkbook(bytes,origin){
  setLoading(true,'Leyendo las hojas y normalizando información…');
  try{const sheets=await parseXlsx(bytes);const d=parseDocumentCatalog(sheets,documentColumnMapping);if(d.found)receiveDocumentCatalog(sheets,origin);const candidate=buildModel(sheets,origin);const newHierarchy=buildHierarchy(candidate);
@@ -50,8 +60,8 @@ async function loadWorkbook(bytes,origin){
   model=candidate;hierarchy=newHierarchy;validationEvidence=calculateValidation(sheets,CATALOGO_FIJO);excelNotes=extractExcelObservations(candidate,newHierarchy);currentSource=origin;page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';drawerId=null;
   expandedSystems=new Set();expandedIntegrations=new Set();
   const featured=newHierarchy.systems.slice().sort((a,b)=>b.operationCount-a.operationCount)[0];if(featured){expandedSystems.add(featured.id);const first=featured.integrations.find(i=>i.endpoints.length);if(first)expandedIntegrations.add(first.id);}
-  technicalFilter='';el('source-pill').textContent=origin.length>38?origin.slice(0,35)+'…':origin;
-  el('updated-text').textContent='Actualizado: '+new Date(candidate.importedAt).toLocaleString('es-PE');
+  technicalFilter='';
+  if(activeTab==='sync')el('updated-text').textContent='Datos de importación: '+new Date(candidate.importedAt).toLocaleString('es-PE');
   el('sidebar-systems').textContent=number(newHierarchy.systems.length);
   refreshSpecialtyUI();
   el('sidebar-endpoints').textContent=number(candidate.endpoints.length);
@@ -71,35 +81,70 @@ async function loadPublicDrive(){
   await loadWorkbook(await response.arrayBuffer(),'Drive público · '+id.slice(0,10)+'…');
   currentDriveUrl=url;sessionStorage.setItem('drive-url',url);configureRefresh();
  }catch(e){
-  el('source-pill').textContent=model?'Drive · sin sincronizar':'Drive · acceso pendiente';
+  
   const msg='No se pudo leer la fuente Google: '+e.message+' Si es privado, autoriza tu cuenta en Fuentes → Google Drive o habilita OAuth según README.';
   alertMsg(msg,'error');el('import-status').textContent=msg;console.warn(msg);
  }finally{driveBusy=false;setLoading(false);}
 }
 
 function googleScript(){return new Promise((resolve,reject)=>{if(window.google?.accounts?.oauth2)return resolve();const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar el servicio de autenticación de Google.'));document.head.appendChild(script);});}
-async function authorizeGoogle(){const clientId=window.DASHBOARD_GOOGLE_CLIENT_ID;if(!clientId)throw new Error('Para leer Drive privado configura el ID de cliente OAuth en config.js.');await googleScript();accessToken=await new Promise((resolve,reject)=>{const client=window.google.accounts.oauth2.initTokenClient({client_id:clientId,scope:'openid email https://www.googleapis.com/auth/drive.readonly',callback:result=>result.error?reject(new Error(result.error)):resolve(result.access_token)});googleClient=client;client.requestAccessToken({prompt:'consent'});});return accessToken;}
+/** Identificación del usuario: permisos de identidad, SIN permisos de Drive. */
+async function authorizeGoogle({silent=false}={}){
+ const clientId=window.DASHBOARD_GOOGLE_CLIENT_ID;
+ if(!clientId)throw new Error('Configura DASHBOARD_GOOGLE_CLIENT_ID para iniciar sesión.');
+ await googleScript();
+ accessToken=await new Promise((resolve,reject)=>{
+  let settled=false;
+  const finish=(error,token)=>{if(settled)return;settled=true;clearTimeout(timeout);if(error)reject(error);else resolve(token);};
+  const timeout=setTimeout(()=>finish(new Error('Inicia sesión para consultar Neon.')),silent?6500:60000);
+  const client=window.google.accounts.oauth2.initTokenClient({
+   client_id:clientId,scope:'openid email',include_granted_scopes:false,
+   callback:r=>r.error?finish(new Error(r.error)):finish(null,r.access_token),
+   error_callback:()=>finish(new Error('No se pudo completar el inicio de sesión.'))
+  });
+  try{client.requestAccessToken({prompt:silent?'':'select_account'});}catch(e){finish(e);}
+ });
+ return accessToken;
+}
+/** Solo se invoca desde Sincronización de datos para descargar archivos privados. */
+async function authorizeDrive(){
+ const clientId=window.DASHBOARD_GOOGLE_CLIENT_ID;
+ if(!clientId)throw new Error('Configura DASHBOARD_GOOGLE_CLIENT_ID para acceder a Drive.');
+ await googleScript();
+ driveToken=await new Promise((resolve,reject)=>{
+  let settled=false;
+  const finish=(error,token)=>{if(settled)return;settled=true;clearTimeout(timeout);if(error)reject(error);else resolve(token);};
+  const timeout=setTimeout(()=>finish(new Error('No se autorizó Google Drive.')),60000);
+  const client=window.google.accounts.oauth2.initTokenClient({
+   client_id:clientId,scope:'https://www.googleapis.com/auth/drive.readonly',include_granted_scopes:false,
+   callback:r=>r.error?finish(new Error(r.error)):finish(null,r.access_token),
+   error_callback:()=>finish(new Error('No se pudo autorizar el acceso privado a Drive.'))
+  });
+  try{client.requestAccessToken({prompt:'consent'});}catch(e){finish(e);}
+ });
+ return driveToken;
+}
 async function loadPrivateDrive({background=false}={}){
  if(driveBusy)return;driveBusy=true;
  try{
   const url=el('drive-url').value.trim()||DEFAULT_GOOGLE_URL,id=driveId(url);
   setLoading(true,'Leyendo Drive con cuenta autorizada…');
-  if(!accessToken){if(background)throw new Error('La autorización caducó. Pulsa Fuentes → Autorizar y leer privado.');await authorizeGoogle();}
-  const headers={Authorization:`Bearer ${accessToken}`};
+  if(!driveToken){if(background)throw new Error('La autorización de Drive caducó. Ingresa a Sincronización de datos y autoriza el acceso.');await authorizeDrive();}
+  const headers={Authorization:`Bearer ${driveToken}`};
   const metaResp=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,mimeType`,{headers,cache:'no-store'});
-  if(!metaResp.ok){if(metaResp.status===401)accessToken='';throw new Error(`Drive API (${metaResp.status}): archivo inaccesible o permisos insuficientes.`);}
+  if(!metaResp.ok){if(metaResp.status===401)driveToken='';throw new Error(`Drive API (${metaResp.status}): archivo inaccesible o permisos insuficientes.`);}
   const info=await metaResp.json();let endpoint;
   if(info.mimeType==='application/vnd.google-apps.spreadsheet')endpoint=`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet`;
   else if(info.mimeType==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')endpoint=`https://www.googleapis.com/drive/v3/files/${id}?alt=media`;
   else throw new Error('El recurso no es una hoja Google Sheets ni un .xlsx válido.');
   const response=await fetch(endpoint,{headers,cache:'no-store'});
-  if(!response.ok){if(response.status===401)accessToken='';throw new Error(`No se pudo descargar el libro: HTTP ${response.status}.`);}
+  if(!response.ok){if(response.status===401)driveToken='';throw new Error(`No se pudo descargar el libro: HTTP ${response.status}.`);}
   await loadWorkbook(await response.arrayBuffer(),'Drive privado · '+trim(info.name,30));
   currentDriveUrl=url;sessionStorage.setItem('drive-url',url);configureRefresh();
   await loadTacticalPrivate({background:true});
  }catch(err){
   const msg='Drive privado: '+err.message;el('import-status').textContent=msg;alertMsg(msg,'error');
-  el('source-pill').textContent=model?'Drive · sin sincronizar':'Drive · acceso pendiente';
+  
  }finally{driveBusy=false;setLoading(false);}
 }
 function configureRefresh(){
@@ -127,24 +172,163 @@ async function loadTacticalWorkbook(bytes,origin){
  // Ambas pestañas pertenecen al mismo Excel privado. La falta de una no bloquea la otra.
  const mapped=parseVias(sheets,next,viaColumnMapping||{});
  const newActivity=parseActividadFlujo(sheets,next);
- tacticalData=next;viaRawSheets=sheets;viasData=mapped;activityFlowData=newActivity;tacticalError='';tacticalOrigin=origin;
- if(!newActivity.vias.some(v=>v.name===activitySelected))activitySelected=newActivity.vias[0]?.name||'';
- flowOpenedSteps=new Set();flowOpenedActivities=new Set();
- if(newActivity.vias[0]?.steps[0])flowOpenedSteps.add((newActivity.vias.find(v=>v.name===activitySelected)||newActivity.vias[0]).steps[0].id);
- if(mapped.error)viaConfigOpen=true;
- if(!mapped.vias.some(v=>v.name===viaSelected))viaSelected=mapped.vias[0]?.name||'';
+ tacticalGoogleData=next;tacticalGoogleOrigin=origin;
+ if(tacticalReadSource==='google_sheets'){tacticalData=next;tacticalOrigin=origin;}
+ viaRawSheets=sheets;viaGoogleData=mapped;if(viaReadSource==='google_sheets')viasData=mapped;activityGoogleData=newActivity;if(activityReadSource==='google_sheets')activityFlowData=newActivity;tacticalError='';
+ if(activityFlowData&&!activityFlowData.vias.some(v=>v.name===activitySelected))activitySelected=activityFlowData.vias[0]?.name||'';
+ if(activityReadSource==='google_sheets'){flowOpenedSteps=new Set();flowOpenedActivities=new Set();
+  if(newActivity.vias[0]?.steps[0])flowOpenedSteps.add((newActivity.vias.find(v=>v.name===activitySelected)||newActivity.vias[0]).steps[0].id);}
+ if(mapped.error&&viaReadSource==='google_sheets')viaConfigOpen=true;
+ if(viasData&&!viasData.vias.some(v=>v.name===viaSelected))viaSelected=viasData.vias[0]?.name||'';
  render();return next;
+}
+async function changeActivityReadSource(source){
+ if(source==='google_sheets'){
+  activityReadSource='google_sheets';activityFlowData=activityGoogleData;activityError='';
+  if(!activityFlowData&&TACTICAL_GOOGLE_URL)await loadTacticalPrivate();
+  if(activityFlowData&&!activityFlowData.vias.some(v=>v.name===activitySelected))activitySelected=activityFlowData.vias[0]?.name||'';
+  renderActivityFlow();return;
+ }
+ try{
+  const response=await requestSync('/api/flujo-actividades?action=records');
+  const next=rehydrateFlowFromNeon(response.activities,response.links,response.metadata);
+  activityNeonData=next;activityFlowData=next;activityReadSource='neon';activityError='';
+  if(!next.vias.some(v=>v.name===activitySelected))activitySelected=next.vias[0]?.name||'';
+  flowOpenedSteps=new Set(next.vias.find(v=>v.name===activitySelected)?.steps.slice(0,1).map(s=>s.id)||[]);
+  flowOpenedActivities=new Set();
+ }catch(e){activityError=e.message||'No fue posible cargar el Flujo de actividades.';}
+ renderActivityFlow();
+}
+async function refreshActivityCurrent(){return changeActivityReadSource('neon');}
+async function changeViaReadSource(source){
+ if(source==='google_sheets'){
+  viaReadSource='google_sheets';viaError='';viasData=viaGoogleData;
+  if(!viasData&&viaRawSheets&&tacticalGoogleData)viaGoogleData=viasData=parseVias(viaRawSheets,tacticalGoogleData,viaColumnMapping||{});
+  if(!viasData&&TACTICAL_GOOGLE_URL)await loadTacticalPrivate();
+  if(viasData&&!viasData.vias.some(v=>v.name===viaSelected))viaSelected=viasData.vias[0]?.name||'';
+  renderVias();return;
+ }
+ try{
+  const response=await requestSync('/api/integraciones-via?action=records');
+  const next=rehydrateViasFromNeon(response.entries,response.metadata);
+  // No mezclar asociaciones de Neon con un Seguimiento de otra versión.
+  viaNeonData=next;viasData=next;viaReadSource='neon';viaError='';viaConfigOpen=false;
+  if(!next.vias.some(v=>v.name===viaSelected))viaSelected=next.vias[0]?.name||'';
+ }catch(e){viaError=e.message||'No fue posible cargar Integraciones por vía.';}
+ renderVias();
+}
+async function refreshViaCurrent(){return changeViaReadSource('neon');}
+async function changeTacticalReadSource(source){
+ if(tacticalBusy)return;
+ if(source==='google_sheets'){
+  tacticalReadSource='google_sheets';tacticalData=tacticalGoogleData;
+  tacticalOrigin=tacticalGoogleOrigin||'Google Sheets · no cargado';
+  tacticalError='';renderTactical();
+  if(!tacticalData)await loadTacticalPrivate();
+  return;
+ }
+ tacticalBusy=true;tacticalError='';renderTactical();
+ try{
+  const response=await requestSync('/api/resumen-tactico?action=records');
+  const next=rehydrateTacticalFromNeon(response.entries);
+  tacticalNeonData=next;tacticalReadSource='neon';tacticalData=next;tacticalOrigin='Neon · lote '+String(response.batchId||'').slice(0,8);
+ }catch(e){tacticalError=e.message||'No se pudo cargar el Resumen táctico.';}
+ finally{tacticalBusy=false;renderTactical();}
+}
+async function refreshTacticalCurrent(){return changeTacticalReadSource('neon');}
+let neonStartupBusy=false;
+let neonStartupMessage='';
+function updateNeonAccessIndicator(){
+ const pill=el('source-pill');if(pill)pill.classList.add('hidden');
+ const btn=el('access-neon');if(btn)btn.classList.add('hidden');
+}
+/** Carga de publicaciones para consulta, sin OAuth ni acceso a Google Drive. */
+async function loadPublishedNeonDashboard(){
+ if(neonStartupBusy)return;
+ neonStartupBusy=true;neonStartupMessage='';render();
+ try{
+  await Promise.all([changeTacticalReadSource('neon'),changeViaReadSource('neon'),changeActivityReadSource('neon'),changeDocumentReadSource('neon')]);
+  const problems=[tacticalError,viaError,activityError,documentError].filter(Boolean);
+  neonStartupMessage=problems.length?'Algunos módulos no se pudieron consultar: '+problems.join(' · '):'';
+  if(!problems.length)el('updated-text').textContent='Última consulta: '+new Date().toLocaleString('es-PE');
+ }catch(e){neonStartupMessage=e.message||'No se pudieron cargar los datos publicados.';}
+ finally{neonStartupBusy=false;render();}
+}
+function neonLoadPlaceholder(section,error=''){
+ const message=error||neonStartupMessage||(neonStartupBusy?'Cargando datos publicados…':'No se pudieron cargar los datos.');
+ return `<section class="panel neon-access-placeholder"><h2>${escape(section)}</h2><p role="status">${escape(message)}</p><button class="btn btn-light" data-action="public-retry" ${neonStartupBusy?'disabled':''}>${neonStartupBusy?'Cargando…':'↻ Recargar vista'}</button></section>`;
 }
 function receiveDocumentCatalog(sheets,origin){
  const result=parseDocumentCatalog(sheets,documentColumnMapping);
- documentCatalog=result;documentSheets=sheets;documentOrigin=origin;
+ documentGoogleCatalog=result;documentSheets=sheets;documentOrigin=origin;
+ if(documentReadSource==='neon')return result;
+ documentCatalog=result;
  if(result.mapping && !Object.keys(result.mapping).some(k=>!['codigo','documento'].includes(k))){documentStateFilter='';documentTypeFilter='';documentSpecialtyFilter='';documentOwnerFilter='';}
  documentError=result.error||'';
  if(!result.documents.some(d=>d.id===documentSelectedId))documentSelectedId='';
  return result;
 }
+async function changeDocumentReadSource(source){
+ if(documentBusy)return;
+ if(source==='google_sheets'){
+  documentReadSource=source;documentCatalog=documentGoogleCatalog;documentError='';documentConfigOpen=false;
+  documentSelectedId='';renderDocumentCatalog();
+  if(!documentCatalog?.found)await loadDocumentsPrivate();
+  return;
+ }
+ documentBusy=true;documentError='';renderDocumentCatalog();
+ try{
+  const result=await requestSync('/api/documentos-clave?action=catalog');
+  documentNeonCatalog=parseDocumentCatalog(keyDocumentsAsSheets(result.documents));
+  if(!documentNeonCatalog.found||documentNeonCatalog.error)throw new Error(documentNeonCatalog.error||'Catálogo Neon inválido.');
+  documentReadSource='neon';documentNeonBatchId=result.batchId;
+  documentCatalog=documentNeonCatalog;documentSelectedId='';documentConfigOpen=false;
+  documentStateFilter='';documentTypeFilter='';documentSpecialtyFilter='';documentOwnerFilter='';
+ }catch(error){documentError=error.message;}
+ finally{documentBusy=false;renderDocumentCatalog();}
+}
+async function refreshDocumentNeon(){
+ if(documentReadSource==='neon')return changeDocumentReadSource('neon');
+ return loadDocumentsPrivate();
+}
+async function documentMigrationAction(action){
+ if(syncLoading)return;
+ syncLoading=true;syncFeedback.documentos_clave=null;renderSync();
+ try{
+  if(action==='preview'){
+   docMigrationStatus=await requestSync('/api/documentos-clave?action=preview');
+   const p=docMigrationStatus.preview;
+   syncFeedback.documentos_clave={title:'Cotejo de Documentos Clave',message:p?`${p.records} documentos normalizados · ${p.referencesChecked} códigos con incidencias o revisiones contrastados.`:'No hay copia preliminar para publicar.',
+    details:p?`Altas: ${p.comparison.added} · Nombres modificados: ${p.comparison.renamed} · Bajas: ${p.comparison.removed} · Sin cambios: ${p.comparison.unchanged}`:'',
+    error:!!p&&!p.canPublish,list:p?.unmatchedReferences?.length?[`Códigos pendientes de reconciliación: ${p.unmatchedReferences.join(', ')}`]:[]};
+  }else if(action==='publish'){
+   if(!docMigrationStatus?.preview?.canPublish)throw new Error('Ejecuta primero «Cotejar catálogo» y atiende las discrepancias.');
+   const refreshed=await (DOCUMENTS_GOOGLE_URL===TACTICAL_GOOGLE_URL?loadTacticalPrivate():loadDocumentsPrivate().then(()=>!documentError));
+   if(!refreshed)throw new Error('No se pudo refrescar Google Sheets. No se realizará la publicación.');
+   const source=syncSource('documentos_clave');
+   if(!source||!source.origin.startsWith('Drive privado'))throw new Error('La publicación exige haber cargado CatalogoDocumentos desde Google Drive privado, no solo un Excel local.');
+   // Impedir enviar una lectura local antigua sin confirmación consciente del usuario.
+   if(!confirm(`¿Publicar ${docMigrationStatus.preview.records} Documentos Clave en Neon? Se mantendrán las incidencias y podrás regresar a Google Sheets.`))return;
+   const snapshot=prepareSyncAction('documentos_clave',source).snapshot;
+   const result=await requestSync('/api/documentos-clave',{method:'POST',body:JSON.stringify({action:'publish',confirm:true,batchId:docMigrationStatus.latestBatch.id,snapshot})});
+   syncFeedback.documentos_clave={title:'Catálogo publicado',message:result.message};
+   await changeDocumentReadSource('neon');
+   docMigrationStatus=await requestSync('/api/documentos-clave?action=status');
+   syncStatus=await requestSync('/api/sincronizacion');
+  }else if(action==='rollback'){
+   if(!confirm('¿Restablecer Google Sheets como fuente del catálogo? No se borrarán datos de Neon.'))return;
+   const result=await requestSync('/api/documentos-clave',{method:'POST',body:JSON.stringify({action:'rollback',confirm:true})});
+   syncFeedback.documentos_clave={title:'Fuente revertida',message:result.message};
+   docMigrationStatus=await requestSync('/api/documentos-clave?action=status');
+   syncStatus=await requestSync('/api/sincronizacion');
+   if(documentReadSource==='neon')await changeDocumentReadSource('google_sheets');
+  }
+ }catch(error){syncFeedback.documentos_clave={error:true,title:'Operación documental no completada',message:error.message};}
+ finally{syncLoading=false;renderSync();}
+}
 async function loadDocumentFile(file){
  if(!file)return;
+ if(documentReadSource==='neon'){documentError='Cambia primero a Google Sheets para importar un respaldo Excel.';renderDocumentCatalog();return;}
  if(!/\.xlsx$/i.test(file.name)){documentError='Selecciona un respaldo documental .xlsx.';renderDocumentCatalog();return;}
  documentBusy=true;renderDocumentCatalog();
  try{receiveDocumentCatalog(await parseXlsx(await file.arrayBuffer()),'Archivo local · '+file.name);}
@@ -160,10 +344,10 @@ async function loadDocumentsPrivate(){
  }
  documentBusy=true;documentError='';renderDocumentCatalog();
  try{
-  if(!accessToken)await authorizeGoogle();
-  const id=driveId(DOCUMENTS_GOOGLE_URL),headers={Authorization:`Bearer ${accessToken}`};
+  if(!driveToken)await authorizeDrive();
+  const id=driveId(DOCUMENTS_GOOGLE_URL),headers={Authorization:`Bearer ${driveToken}`};
   const response=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,mimeType`,{headers,cache:'no-store'});
-  if(!response.ok){if(response.status===401)accessToken='';throw new Error(`El catálogo documental no es accesible (${response.status}).`);}
+  if(!response.ok){if(response.status===401)driveToken='';throw new Error(`El catálogo documental no es accesible (${response.status}).`);}
   const info=await response.json();
   const source=info.mimeType==='application/vnd.google-apps.spreadsheet'
     ?`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet`
@@ -171,7 +355,7 @@ async function loadDocumentsPrivate(){
       ?`https://www.googleapis.com/drive/v3/files/${id}?alt=media`:null;
   if(!source)throw new Error('La fuente documental no es un Google Sheets ni un .xlsx válido.');
   const download=await fetch(source,{headers,cache:'no-store'});
-  if(!download.ok){if(download.status===401)accessToken='';throw new Error(`Descarga documental fallida (${download.status}).`);}
+  if(!download.ok){if(download.status===401)driveToken='';throw new Error(`Descarga documental fallida (${download.status}).`);}
   receiveDocumentCatalog(await parseXlsx(await download.arrayBuffer()),'Drive privado · '+trim(info.name,55));
  }catch(e){documentError=e.message||'No fue posible actualizar el catálogo documental.';alertMsg(documentError,'error');}
  finally{documentBusy=false;renderDocumentCatalog();}
@@ -195,30 +379,42 @@ function focusDocumentActionFeedback(){
 }
 function duplicateDocumentCode(doc){return !!doc?.codigo&&(documentCatalog?.documents||[]).filter(d=>norm(d.codigo)===norm(doc.codigo)).length>1;}
 async function incidentRequest(path,options={}){
- if(!accessToken)throw new Error('Autoriza tu cuenta de Google para utilizar la bitácora.');
- const response=await fetch(path,{...options,cache:'no-store',headers:{Authorization:`Bearer ${accessToken}`,...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
+ const isRead=!options.method||options.method==='GET';
+ if(!isRead&&!accessToken)await authorizeEditor();
+ const response=await fetch(path,{...options,cache:'no-store',headers:{...(!isRead?{Authorization:`Bearer ${accessToken}`}:{}) ,...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
  let data={};try{data=await response.json();}catch{}
- if(!response.ok){if(response.status===401){accessToken='';incidentAuthorized=false;}throw new Error(data.error||`Error HTTP ${response.status}.`);}
+ if(!response.ok){if(response.status===401&&!isRead){accessToken='';sessionCanEdit=false;incidentCanEdit=false;}throw new Error(data.error||`Error HTTP ${response.status}.`);}
  return data;
 }
 async function loadIncidentsForDocument(doc){
  if(!doc||!doc.codigo||duplicateDocumentCode(doc))return;
  const code=String(doc.codigo).trim().toLocaleUpperCase('es');
  incidentCode=code;incidentItems=[];incidentEvents=[];incidentError='';incidentLimited=false;documentReview=null;documentReviewHistory=[];
- if(!accessToken){incidentAuthorized=false;renderDocumentCatalog();return;}
  incidentLoading=true;renderDocumentCatalog();
  try{
   const result=await incidentRequest(`/api/incidencias?documento=${encodeURIComponent(code)}`);
   if(incidentCode!==code)return;
-  incidentItems=result.items||[];incidentEvents=result.events||[];incidentLimited=!!result.limited;incidentAuthorized=true;
+  incidentItems=result.items||[];incidentEvents=result.events||[];incidentLimited=!!result.limited;incidentAuthorized=true;incidentCanEdit=!!sessionCanEdit;
   documentReview=result.review||null;documentReviewHistory=result.reviewHistory||[];
- }catch(err){if(incidentCode===code){incidentError=err.message;incidentAuthorized=false;}}
+ }catch(err){if(incidentCode===code){incidentError=err.message;incidentAuthorized=false;incidentCanEdit=false;}}
  finally{if(incidentCode===code){incidentLoading=false;renderDocumentCatalog();}}
 }
-async function authorizeIncidents(){
- try{if(!accessToken)await authorizeGoogle();const doc=activeDocument();if(doc)await loadIncidentsForDocument(doc);}
- catch(err){incidentError=err.message;incidentAuthorized=false;renderDocumentCatalog();}
+async function authorizeEditor(){
+ if(!accessToken)await authorizeGoogle();
+ const session=await requestSync('/api/sesion');
+ sessionEmail=session.email;sessionCanEdit=!!session.canEdit;
+ if(!sessionCanEdit)throw new Error('La cuenta no tiene permiso para editar o sincronizar datos.');
+ return session;
 }
+async function authorizeIncidents(){
+ try{await authorizeEditor();const doc=activeDocument();if(doc)await loadIncidentsForDocument(doc);renderDocumentCatalog();}
+ catch(err){incidentError=err.message;renderDocumentCatalog();}
+}
+async function authorizeSynchronization(){
+ try{await authorizeEditor();await refreshSyncStatus();renderSync();}
+ catch(err){alertMsg(err.message,'error');renderSync();}
+}
+
 async function saveDocumentReview(form){
  const doc=activeDocument();if(!doc?.codigo)return;
  if(duplicateDocumentCode(doc)){incidentError='El código documental está duplicado. Corrige el catálogo antes de actualizar el seguimiento.';documentActionFeedback={scope:'review',type:'error',message:incidentError};renderDocumentCatalog();focusDocumentActionFeedback();return;}
@@ -227,13 +423,13 @@ async function saveDocumentReview(form){
  incidentBusy=true;incidentError='';documentActionFeedback=null;
  const submitButton=form.querySelector('[type=submit]');if(submitButton)submitButton.disabled=true;
  try{
-  if(!accessToken)await authorizeGoogle();
+  if(!sessionCanEdit)await authorizeEditor();
   await incidentRequest('/api/incidencias',{
    method:'PATCH',body:JSON.stringify({action:'document-review',documentCode:doc.codigo,documentName:doc.documento,
     version:fields.version,status:fields.status,comment:fields.comment,expectedRevision:documentReview?.revision||0})
   });
   documentReviewDraft=null;
-  documentActionFeedback={scope:'review',type:'success',message:'Versión y estado documental guardados en Neon con auditoría.'};
+  documentActionFeedback={scope:'review',type:'success',message:'Versión y estado documental guardados con auditoría.'};
   await loadIncidentsForDocument(doc);
  }catch(e){
   incidentError=e.message;
@@ -257,7 +453,7 @@ async function saveIncident(form,kind){
  incidentBusy=true;incidentError='';documentActionFeedback=null;
  const submitButton=form.querySelector('[type=submit]');if(submitButton)submitButton.disabled=true;
  try{
-  if(!accessToken)await authorizeGoogle();
+  if(!sessionCanEdit)await authorizeEditor();
   const result=await incidentRequest((updating||commentOnly)?`/api/incidencias?id=${encodeURIComponent(id)}`:'/api/incidencias',{method:(updating||commentOnly)?'PATCH':'POST',body:JSON.stringify(payload)});
   const savedId=result.item?.id||id;
   incidentCreateOpen=false;incidentEditingId='';incidentDraft={};
@@ -276,7 +472,7 @@ function documentExpandedDetail(selected,baseOnly){
   ? [['Cod Documento',selected.codigo],['Nombre Documento',selected.documento]]
   : [['Código',selected.codigo],['Versión',selected.versionLabel],['Tipo',selected.tipo],['Estado registrado',selected.statusLabel],['Responsable',selected.responsable],['Especialidad',selected.especialidad],['Fecha',selected.fecha]];
  const extra=selected.extras?.length
-  ? `<details class="doc-extra"><summary>Otros atributos del Excel (${selected.extras.length})</summary><div class="doc-detail-grid">${selected.extras.map(e=>`<div><b>${escape(e.header)}</b><span>${escape(e.value)}</span></div>`).join('')}</div></details>`:'';
+  ? `<details class="doc-extra"><summary>Otros atributos del documento (${selected.extras.length})</summary><div class="doc-detail-grid">${selected.extras.map(e=>`<div><b>${escape(e.header)}</b><span>${escape(e.value)}</span></div>`).join('')}</div></details>`:'';
  const incidents=duplicateDocumentCode(selected)
   ? '<div class="notice error">Este código se repite en CatalogoDocumentos. Corrige el duplicado para evitar que dos documentos compartan la misma bitácora.</div>'
   : renderIncidentSection({
@@ -285,7 +481,7 @@ function documentExpandedDetail(selected,baseOnly){
      events:incidentEvents,
      loading:incidentLoading,
      error:incidentError,
-     authorized:incidentAuthorized,
+     authorized:incidentAuthorized,canEdit:incidentCanEdit,
      createOpen:incidentCreateOpen,
      editingId:incidentEditingId,
      limited:incidentLimited,
@@ -313,8 +509,8 @@ function renderDocumentCatalog(){
  const opt=(field,selected)=>`<option value="">Todos</option>`+[...new Set(docs.map(d=>field==='estado'?d.statusLabel:d[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')).map(v=>`<option value="${escape(v)}" ${v===selected?'selected':''}>${escape(v)}</option>`).join('');
  const badges=summary.estados.map(st=>`<span class="doc-state-total">${escape(st)} <b>${docs.filter(d=>d.statusLabel===st).length}</b></span>`).join('');
  const report=baseOnly?[['Documentos registrados',summary.records],['Códigos únicos',summary.codigosUnicos],['Sin código',summary.sinCodigo],['Códigos repetidos',summary.codigosRepetidos]]:[['Registros documentales',summary.records],['Documentos únicos',summary.documentos],['Con versión informada',summary.versiones],['Validados en la fuente',summary.validados]];
- const header=`<section class="panel doc-intro"><div><div class="eyebrow">GESTIÓN DOCUMENTAL · ETAPAS 1 Y 2</div><h2>Catálogo documental</h2><p>${baseOnly?'Inventario de documentos basado en Cod Documento (A) y Nombre Documento (B).':'Inventario de documentos y atributos de CatalogoDocumentos.'} El catálogo se consulta desde Excel; las incidencias se registran en una base de datos independiente.</p><small>${documentOrigin?'Origen: '+escape(documentOrigin)+' · ':''}${documentCatalog?.readAt?'Lectura: '+new Date(documentCatalog.readAt).toLocaleString('es-PE'): 'Sin lectura registrada'}</small></div><div class="doc-intro-actions"><button class="btn btn-light" data-action="docs-refresh" ${documentBusy||tacticalBusy?'disabled':''}>${documentBusy||tacticalBusy?'Leyendo…':'↻ Actualizar documentos'}</button><label class="btn btn-light" for="document-local-file">Importar .xlsx</label><input type="file" id="document-local-file" accept=".xlsx" hidden></div></section>`;
- if(!documentCatalog?.found){view.innerHTML=header+(documentError?`<div class="notice error">${escape(documentError)}</div>`:'')+documentCatalogDiagnosticsPlaceholder();return;}
+ const header=`<section class="panel doc-intro"><div><div class="eyebrow">GESTIÓN DOCUMENTAL · ETAPAS 1 Y 2</div><h2>Catálogo documental</h2><p>Consulta de documentos, incidencias y estados de revisión.</p></div><div class="doc-intro-actions"><span class="neon-readonly-indicator">Datos publicados</span><button class="btn btn-light" data-action="docs-refresh" ${documentBusy||tacticalBusy?'disabled':''}>${documentBusy||tacticalBusy?'Leyendo…':'↻ Recargar vista'}</button></div></section>`;
+ if(!documentCatalog?.found){view.innerHTML=neonLoadPlaceholder('Documentos Clave',documentError);return;}
  const toolbar=`<section class="panel doc-filters ${baseOnly?'doc-filters-simple':''}"><label class="doc-search-label">Buscar<input class="input" id="document-search" placeholder="${baseOnly?'Buscar por código o nombre…':'Nombre, código, versión, responsable…'}" value="${escape(documentQuery)}"></label>${baseOnly?'':`<label>Estado<select class="select" id="document-status">${opt('estado',documentStateFilter)}</select></label><label>Tipo<select class="select" id="document-type">${opt('tipo',documentTypeFilter)}</select></label><label>Especialidad<select class="select" id="document-specialty">${opt('especialidad',documentSpecialtyFilter)}</select></label><label>Responsable<select class="select" id="document-owner">${opt('responsable',documentOwnerFilter)}</select></label>`}<button class="btn btn-light btn-sm" data-action="docs-clear">Limpiar filtros</button></section>`;
  const selected=list.find(d=>d.id===documentSelectedId)||null;
  const tableRows=list.map(d=>{
@@ -322,11 +518,11 @@ function renderDocumentCatalog(){
   const label=expanded?'Ocultar ficha ↑':'Examinar →';
   const toggle=`<button class="btn btn-light btn-sm" data-document-select="${escape(d.id)}" aria-expanded="${expanded}" aria-label="${expanded?'Cerrar':'Abrir'} ficha de ${escape(d.documento)}">${label}</button>`;
   const row=baseOnly
-   ? `<tr class="${expanded?'doc-current-row':''}"><td>${escape(d.codigo||'Sin código')}</td><td class="doc-name-cell"><b>${escape(d.documento)}</b><small>Fila ${d.row}</small></td><td>${toggle}</td></tr>`
-   : `<tr class="${expanded?'doc-current-row':''}"><td class="doc-name-cell"><b>${escape(d.documento)}</b><small>Fila ${d.row}</small></td><td>${escape(d.codigo||'—')}</td><td>${escape(d.versionLabel)}</td><td>${escape(d.tipo||'—')}</td><td>${escape(d.responsable||'—')}</td><td><span class="doc-status-tag ${/^validado(?:\b|$)|^validada(?:\b|$)/.test(norm(d.estado))?'doc-validated':''}">${escape(d.statusLabel)}</span></td><td>${toggle}</td></tr>`;
+   ? `<tr class="${expanded?'doc-current-row':''}"><td>${escape(d.codigo||'Sin código')}</td><td class="doc-name-cell"><b>${escape(d.documento)}</b></td><td>${toggle}</td></tr>`
+   : `<tr class="${expanded?'doc-current-row':''}"><td class="doc-name-cell"><b>${escape(d.documento)}</b></td><td>${escape(d.codigo||'—')}</td><td>${escape(d.versionLabel)}</td><td>${escape(d.tipo||'—')}</td><td>${escape(d.responsable||'—')}</td><td><span class="doc-status-tag ${/^validado(?:\b|$)|^validada(?:\b|$)/.test(norm(d.estado))?'doc-validated':''}">${escape(d.statusLabel)}</span></td><td>${toggle}</td></tr>`;
   return row+(expanded?`<tr class="doc-expanded-row" data-expanded-doc="${escape(d.id)}"><td colspan="${baseOnly?3:7}">${documentExpandedDetail(d,baseOnly)}</td></tr>`:'');
  }).join('');
- view.innerHTML=header+(documentError?`<div class="notice error">${escape(documentError)}</div>`:'')+(documentCatalog.warnings||[]).map(w=>`<div class="scope-notice">${escape(w)}</div>`).join('')+`<div class="doc-kpis">${report.map(([label,n])=>`<div class="doc-kpi"><span>${label}</span><strong>${number(n)}</strong></div>`).join('')}</div>${baseOnly?'':`<div class="doc-status-breakdown">${badges}</div>`}`+toolbar+`<section class="panel doc-register"><div class="doc-register-heading"><h3>Inventario de documentos</h3><span>Mostrando ${list.length} de ${docs.length}</span><button class="btn btn-light btn-sm" data-action="docs-config">${documentConfigOpen?'Ocultar configuración':'Configurar columnas'}</button></div><div class="doc-table-wrap"><table class="${baseOnly?'doc-simple-table':''}"><thead><tr>${baseOnly?'<th>Cod Documento</th><th>Nombre Documento</th><th>Detalle</th>':'<th>Documento</th><th>Código</th><th>Versión</th><th>Tipo</th><th>Responsable</th><th>Estado</th><th>Detalle</th>'}</tr></thead><tbody>${tableRows||`<tr><td colspan="${baseOnly?3:7}" class="doc-empty">No hay documentos para los filtros actuales.</td></tr>`}</tbody></table></div></section>`+(documentConfigOpen||documentCatalog.error?documentCatalogDiagnostics():'')+`<p class="doc-footnote">Fuente: ${escape(documentCatalog.sheet)} · ${baseOnly?'Columna A: Cod Documento · Columna B: Nombre Documento. Versión y estado se gestionan en Neon.':'Los atributos corresponden a las celdas de origen; este módulo no emite aprobaciones.'}</p>`;
+ view.innerHTML=header+(documentError?`<div class="notice error">${escape(documentError)}</div>`:'')+(documentCatalog.warnings||[]).map(w=>`<div class="scope-notice">${escape(w)}</div>`).join('')+`<div class="doc-kpis">${report.map(([label,n])=>`<div class="doc-kpi"><span>${label}</span><strong>${number(n)}</strong></div>`).join('')}</div>${baseOnly?'':`<div class="doc-status-breakdown">${badges}</div>`}`+toolbar+`<section class="panel doc-register"><div class="doc-register-heading"><h3>Inventario de documentos</h3><span>Mostrando ${list.length} de ${docs.length}</span></div><div class="doc-table-wrap"><table class="${baseOnly?'doc-simple-table':''}"><thead><tr>${baseOnly?'<th>Cod Documento</th><th>Nombre Documento</th><th>Detalle</th>':'<th>Documento</th><th>Código</th><th>Versión</th><th>Tipo</th><th>Responsable</th><th>Estado</th><th>Detalle</th>'}</tr></thead><tbody>${tableRows||`<tr><td colspan="${baseOnly?3:7}" class="doc-empty">No hay documentos para los filtros actuales.</td></tr>`}</tbody></table></div></section>`+(documentConfigOpen||documentCatalog.error?documentCatalogDiagnostics():'')+`<p class="doc-footnote">Los estados de revisión documental se actualizan únicamente por usuarios autorizados.</p>`;
  if(expandedIdBefore && expandedIdBefore===documentSelectedId && Number.isFinite(topBefore)){
   const expandedAfter=view.querySelector('.doc-expanded-row');
   if(expandedAfter?.dataset.expandedDoc===expandedIdBefore){
@@ -335,7 +531,7 @@ function renderDocumentCatalog(){
   }
  }
 }
-function documentCatalogDiagnosticsPlaceholder(){return `<section class="panel doc-placeholder"><h3>Sin catálogo documental cargado</h3><p>${escape(documentError||'Presiona «Actualizar documentos» para leer CatalogoDocumentos. Si aún no existe en ese libro, se mostrará un diagnóstico con las hojas encontradas.')}</p>${documentCatalog?.diagnostic?.availableSheets?.length?`<p>Hojas encontradas: ${escape(documentCatalog.diagnostic.availableSheets.join(', '))}</p>`:''}<p>Se utiliza por defecto el libro privado del Resumen táctico. Para otra fuente, configura <code>DASHBOARD_DOCUMENTS_SOURCE.url</code> en <code>config.js</code>.</p></section>`;}
+function documentCatalogDiagnosticsPlaceholder(){return `<section class="panel doc-placeholder"><h3>Sin catálogo documental cargado</h3><p>${escape(documentError||'No se pudo cargar el catálogo documental.')}</p>${documentCatalog?.diagnostic?.availableSheets?.length?`<p>Hojas encontradas: ${escape(documentCatalog.diagnostic.availableSheets.join(', '))}</p>`:''}<p>Se utiliza por defecto el libro privado del Resumen táctico. Para otra fuente, configura <code>DASHBOARD_DOCUMENTS_SOURCE.url</code> en <code>config.js</code>.</p></section>`;}
 function applyDocumentMapping(){
  if(!documentSheets)return;
  const form=el('document-mapping-form');if(!form)return;
@@ -360,17 +556,17 @@ async function loadTacticalPrivate({background=false}={}){
  tacticalBusy=true;tacticalError='';render();
  try{
   if(!TACTICAL_GOOGLE_URL)throw new Error('Falta la URL de la fuente táctica en config.js.');
-  if(!accessToken){if(background)throw new Error('Autoriza Google para acceder al resumen táctico.');await authorizeGoogle();}
-  const id=driveId(TACTICAL_GOOGLE_URL),headers={Authorization:`Bearer ${accessToken}`};
+  if(!driveToken){if(background)throw new Error('Autoriza Drive en Sincronización de datos.');await authorizeDrive();}
+  const id=driveId(TACTICAL_GOOGLE_URL),headers={Authorization:`Bearer ${driveToken}`};
   const metadata=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,mimeType`,{headers,cache:'no-store'});
-  if(!metadata.ok){if(metadata.status===401)accessToken='';throw new Error(`No se pudo leer el documento táctico (${metadata.status}). Revisa permisos de Drive.`);}
+  if(!metadata.ok){if(metadata.status===401)driveToken='';throw new Error(`No se pudo leer el documento táctico (${metadata.status}). Revisa permisos de Drive.`);}
   const info=await metadata.json();
   let url='';
   if(info.mimeType==='application/vnd.google-apps.spreadsheet')url=`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet`;
   else if(info.mimeType==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')url=`https://www.googleapis.com/drive/v3/files/${id}?alt=media`;
   else throw new Error('La fuente táctica debe ser un Google Sheets o archivo Excel .xlsx.');
   const response=await fetch(url,{headers,cache:'no-store'});
-  if(!response.ok){if(response.status===401)accessToken='';throw new Error(`Descarga del seguimiento táctico fallida (${response.status}).`);}
+  if(!response.ok){if(response.status===401)driveToken='';throw new Error(`Descarga del seguimiento táctico fallida (${response.status}).`);}
   await loadTacticalWorkbook(await response.arrayBuffer(),'Drive privado · '+trim(info.name,45));
   return true;
  }catch(e){tacticalError=e.message||'No fue posible leer el seguimiento táctico.';render();if(!background)alertMsg('Resumen táctico: '+tacticalError,'error');return false;}
@@ -386,12 +582,7 @@ function renderActivityFlow(){
   return m?String(Number(m[0])):source||'—';
  };
  const uniqueStageLabels=(step)=>[...new Set((step.activities||[]).map(a=>String(a.stage||'').trim()).filter(Boolean))];
- if(!activityFlowData?.vias?.length){
-  const message=activityFlowData?.error||tacticalError||'Aún no se han leído los datos de EtapaActividadIntegracion.';
-  const detail=activityFlowData?.diagnostic;
-  view.innerHTML=`<section class="panel flow-placeholder"><div class="eyebrow">GESTIÓN POR VÍA Y PASO</div><h2>Flujo de actividades</h2><div class="notice ${activityFlowData?.error?'error':''}" role="status">${escape(message)}</div><p>Se requieren las columnas A: Vía, B: Paso, C: Etapa, D: Actividad y E: Integración (opcional). Los estados provienen de la hoja Seguimiento del mismo documento privado.</p>${detail?.found?`<p>Hoja localizada: <b>${escape(detail.name)}</b>, ${detail.rows} filas. Comprueba que existan pasos y actividades.</p>`:''}<button class="btn btn-primary" data-action="activity-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Leyendo…':'↻ Actualizar desde Google'}</button></section>`;
-  return;
- }
+ if(!activityFlowData?.vias?.length){view.innerHTML=neonLoadPlaceholder('Flujo de actividades',activityError);return;}
  const selected=activityFlowData.vias.find(v=>v.name===activitySelected)?activitySelected:activityFlowData.vias[0].name;
  const filtered=actividadView(activityFlowData,selected,activitySeverity);
  const chooser=`<section class="panel flow-controls"><label>Vía<select class="select" id="flow-via">${activityFlowData.vias.map(v=>`<option value="${escape(v.name)}" ${v.name===selected?'selected':''}>${escape(v.name)}</option>`).join('')}</select></label><label>Severidad de integración<select class="select" id="flow-severity">${ACTIVITY_SEVERITIES.map(s=>`<option value="${s.id}" ${s.id===activitySeverity?'selected':''}>${escape(s.label)}</option>`).join('')}</select></label><div class="flow-control-buttons"><button class="btn btn-light btn-sm" data-action="flow-expand">Expandir pasos</button><button class="btn btn-light btn-sm" data-action="flow-collapse">Contraer todo</button></div></section>`;
@@ -404,12 +595,12 @@ function renderActivityFlow(){
   const activities=expanded?step.activities.map(a=>{
    const aopen=flowOpenedActivities.has(a.id);
    const ready=a.integrations.filter(x=>x.ready),pending=a.integrations.filter(x=>!x.ready);
-   return `<article class="flow-activity"><button class="flow-activity-head" data-flow-activity="${escape(a.id)}" aria-expanded="${aopen}"><span><b>${escape(a.name)}</b><span class="flow-stage">${escape(a.stage)}</span>${a.noIntegration?'<span class="flow-no-link">Sin integración asociada</span>':''}</span><span class="flow-chevron">${aopen?'▾':'▸'}</span></button>${aopen?`<div class="flow-activity-detail">${a.noIntegration?'<div class="flow-no-integration">Esta actividad no tiene una integración asociada en la columna E. No se contabiliza como pendiente.</div>':`<div class="flow-lists flow-lists-stacked"><section><h4 class="flow-list-ready">Integraciones listas</h4>${integrationList(ready,'ready')}</section><section><h4 class="flow-list-pending">Integraciones pendientes</h4>${integrationList(pending,'pending')}</section></div>`}</div>`:''}</article>`;
+   return `<article class="flow-activity"><button class="flow-activity-head" data-flow-activity="${escape(a.id)}" aria-expanded="${aopen}"><span><b>${escape(a.name)}</b><span class="flow-stage">${escape(a.stage)}</span>${a.noIntegration?'<span class="flow-no-link">Sin integración asociada</span>':''}</span><span class="flow-chevron">${aopen?'▾':'▸'}</span></button>${aopen?`<div class="flow-activity-detail">${a.noIntegration?'<div class="flow-no-integration">Esta actividad no tiene una integración asociada. No se contabiliza como pendiente.</div>':`<div class="flow-lists flow-lists-stacked"><section><h4 class="flow-list-ready">Integraciones listas</h4>${integrationList(ready,'ready')}</section><section><h4 class="flow-list-pending">Integraciones pendientes</h4>${integrationList(pending,'pending')}</section></div>`}</div>`:''}</article>`;
   }).join(''):'';
   return `<article class="flow-step ${expanded?'flow-step-open':''}"><button class="flow-step-head" data-flow-step="${escape(step.id)}" aria-expanded="${expanded}"><span class="flow-step-number">${escape(stepLabel)}</span><span class="flow-step-copy"><b>Paso N.° ${escape(stepLabel)}</b><small>${step.activities.length} actividad${step.activities.length===1?'':'es'} · ${escape(selected)}</small>${stepStageChips}</span><span class="flow-chevron">${expanded?'▾':'▸'}</span></button>${expanded?`<div class="flow-step-body">${activities||'<p class="flow-no-records">Sin actividades.</p>'}</div>`:''}</article>`;
  }).join('');
  const warnings=activityFlowData.warnings?.length?`<details class="flow-warnings"><summary>Observaciones de vinculación (${activityFlowData.warnings.length})</summary><div>${activityFlowData.warnings.map(w=>`<p>${escape(w)}</p>`).join('')}</div></details>`:'';
- view.innerHTML=`<section class="panel flow-intro"><div><div class="eyebrow">ETAPA ACTIVIDAD INTEGRACIÓN · LABORAL</div><h2>Recorrido por pasos del flujo</h2><p>Explora una vía, despliega un paso y después una actividad para consultar sus integraciones. Se conserva el orden de los pasos del Excel.</p></div><button class="btn btn-light" data-action="activity-refresh" ${tacticalBusy?'disabled':''}>↻ Actualizar actividades</button></section>${chooser}<p class="flow-explanation">La severidad solo filtra integraciones: los pasos y las actividades se mantienen visibles. Actividades sin integración: ${filtered.withoutIntegration}.</p><div class="flow-track">${steps}</div>${warnings}<p class="flow-footnote">Fuente: EtapaActividadIntegracion (A–E) y Seguimiento (estado y criticidad). Un registro sin coincidencia en Seguimiento se presenta pendiente y sin conformidad acreditada.</p>`;
+ view.innerHTML=`<section class="panel flow-intro"><div><div class="eyebrow">ETAPA ACTIVIDAD INTEGRACIÓN · LABORAL</div><h2>Recorrido por pasos del flujo</h2><p>Explora una vía, despliega un paso y después una actividad para consultar sus integraciones.</p></div><div class="button-row"><span class="neon-readonly-indicator">Datos publicados</span><button class="btn btn-light" data-action="activity-refresh" ${tacticalBusy?'disabled':''}>↻ Recargar vista</button></div></section>${activityError?`<div class="notice error" role="alert">${escape(activityError)}</div>`:''}${chooser}<p class="flow-explanation">La severidad solo filtra integraciones: los pasos y las actividades se mantienen visibles. Actividades sin integración: ${filtered.withoutIntegration}.</p><div class="flow-track">${steps}</div>${warnings}<p class="flow-footnote">Las integraciones sin vinculación confirmada se presentan como pendientes.</p>`;
 }
 
 const tacticalLong=(s)=>escape(s||'No registrado').replace(/\r?\n/g,'<br>');
@@ -435,7 +626,7 @@ function viaDiagnostics(diag,rawError,expanded){
  return `<section class="panel via-diagnostic"><button class="via-diagnostic-toggle" data-action="via-config-toggle" aria-expanded="${expanded}"><span><strong>Diagnóstico de la hoja y configuración</strong>${header}</span><span>${expanded?'Ocultar ▴':'Ver columnas ▾'}</span></button>${expanded?`${rawError?`<div class="notice error">${escape(rawError)}</div>`:''}${preview}${form}`:''}</section>`;
 }
 function applyViaMapping(form){
- if(!viaRawSheets||!tacticalData){alertMsg('Primero carga el documento táctico.','error');return;}
+ if(!viaRawSheets||!tacticalGoogleData){alertMsg('Primero carga el documento táctico desde Google Sheets.','error');return;}
  const data=new FormData(form),mode=String(data.get('mode')||'lista'),headerRow=Number(data.get('headerRow')||1),diag=inspectViaSheet(viaRawSheets);
  const col=k=>data.get(k)===''?null:Number(data.get(k));
  viaColumnMapping={mode,headerRow,integrationCol:col('integrationCol'),viaCol:col('viaCol'),stageCol:col('stageCol'),fixedVia:String(data.get('fixedVia')||'').trim(),fixedStage:String(data.get('fixedStage')||'').trim()};
@@ -451,25 +642,21 @@ function applyViaMapping(form){
   const header=entry?.[1]?.[headerRow-1]||[];
   viaColumnMapping.viaCols=header.flatMap((v,i)=>/\bv[ií]a\b/i.test(String(v))?[{name:String(v).trim(),index:i}]:[]);
  }
- viasData=parseVias(viaRawSheets,tacticalData,viaColumnMapping);
+ viaGoogleData=parseVias(viaRawSheets,tacticalGoogleData,viaColumnMapping);viasData=viaGoogleData;viaReadSource='google_sheets';viaError='';
  if(!viasData.vias.some(v=>v.name===viaSelected))viaSelected=viasData.vias[0]?.name||'';
  viaConfigOpen=!!viasData.error;renderVias();
  if(viasData.error)alertMsg(viasData.error,'error');else alertMsg(`IntegracionesEtapa: ${viasData.vias.length} vías, ${viasData.entries.length} asociaciones detectadas.`);
 }
 function renderVias(){
  const view=el('view-vias');if(!view)return;
- if(!viasData?.vias?.length){
-  const msg=viasData?.error||tacticalError||'Todavía no se cargó IntegracionesEtapa desde la fuente táctica.';
-  const diag=viasData?.diagnostic||inspectViaSheet(viaRawSheets);
-  view.innerHTML=`<section class="panel via-empty-panel"><div class="eyebrow">INTEGRACIONES POR VÍA · LABORAL</div><h2>Distribución por etapa procesal</h2><div class="notice error" role="alert"><b>No se pueden mostrar las integraciones:</b> ${escape(msg)}</div><p>${diag?.found?'Se recibió el documento y se localizó IntegracionesEtapa, pero su estructura no coincide con el formato reconocido.':'Se requiere leer la hoja IntegracionesEtapa del documento táctico privado.'}</p><div class="button-row"><button class="btn btn-primary" data-action="vias-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Leyendo Google…':'↻ Actualizar desde Google'}</button><button class="btn btn-light" data-action="via-config-toggle" ${!diag?.found?'disabled':''}>${viaConfigOpen?'Ocultar diagnóstico':'Examinar columnas'}</button></div></section>${viaConfigOpen?viaDiagnostics(diag,msg,true):''}`;return;
- }
+ if(!viasData?.vias?.length){view.innerHTML=neonLoadPlaceholder('Integraciones por vía',viaError);return;}
  const selected=viaSelected||viasData.vias[0].name;
  const viewModel=getViaView(viasData,selected,viaSeverity);
  const severityOptions=VIA_SEVERITY_OPTIONS.map(o=>`<option value="${o.id}" ${viaSeverity===o.id?'selected':''}>${escape(o.label)}</option>`).join('');
  const stages=viewModel?.stages||[];
  const compact=stages.map((st,i)=>`<article class="via-stage-card" style="--via-accent:${['#2e7d32','#00244f','#c55a11','#ffc000','#7952a1','#007e87'][i%6]}"><header class="via-stage-header"><h3>${escape(st.name)}</h3></header><div class="via-stage-content"><section><div class="via-stage-heading"><strong>Integraciones listas</strong></div>${viaList(st.ready,true)}</section><section><div class="via-stage-heading via-pending-title"><strong>Integraciones pendientes</strong></div>${viaList(st.pending,false)}</section></div></article>`).join('');
  const emptyNotices=(viasData.warnings||[]).map(w=>`<div class="via-warning">${escape(w)}</div>`).join('');
- view.innerHTML=`<section class="panel via-heading"><div><div class="eyebrow">INTEGRACIONES POR VÍA · LABORAL</div><h2>Vías y etapas</h2><p>${viasData.vias.length} vías y ${viasData.entries.length} asociaciones vía–etapa–integración. Estado y criticidad contrastados con Seguimiento.</p></div><div class="via-actions"><button class="btn btn-light" data-action="vias-refresh" ${tacticalBusy?'disabled':''}>↻ Actualizar vías</button><button class="btn btn-primary" data-action="vias-export-one" ${viaExportBusy?'disabled':''}>${viaExportBusy?'Generando…':'⤓ Diapositiva de esta vía'}</button><button class="btn btn-light" data-action="vias-export-all" ${viaExportBusy?'disabled':''}>⤓ PPT todas las vías</button></div></section><div class="panel via-controls"><label>Vía<select class="select" id="via-filter">${viasData.vias.map(v=>`<option value="${escape(v.name)}" ${v.name===selected?'selected':''}>${escape(v.name)}</option>`).join('')}</select></label><label>Severidad<select class="select" id="via-severity">${severityOptions}</select></label></div><div class="via-totals" aria-label="Resumen total de integraciones por vía"><div class="via-total via-total-ready"><span>Integraciones listas</span><strong>${viewModel.ready}</strong></div><div class="via-total via-total-pending"><span>Integraciones pendientes</span><strong>${viewModel.pending}</strong></div></div><p class="via-total-explanation">Se cuentan integraciones únicas de la vía para el filtro seleccionado. Una integración presente en varias etapas se cuenta una sola vez; el detalle permanece distribuido por etapa.</p>${emptyNotices}${viaDiagnostics(viasData.diagnostic,'',viaConfigOpen)}<div class="via-grid">${compact}</div><p class="via-footnote">«Lista» significa Validada en Seguimiento. Los demás estados se presentan como pendientes; los registros sin correspondencia se identifican expresamente. La severidad Crítica equivale a criticidad Alta con fondo verde, y Alta a criticidad Alta sin fondo verde. Los datos no representan conformidades adicionales.</p>`;
+ view.innerHTML=`${viaError?`<div class="notice error" role="alert">${escape(viaError)}</div>`:''}<section class="panel via-heading"><div><div class="eyebrow">INTEGRACIONES POR VÍA · LABORAL</div><h2>Vías y etapas</h2><p>${viasData.vias.length} vías y ${viasData.entries.length} asociaciones vía–etapa–integración.</p></div><div class="via-actions"><span class="neon-readonly-indicator">Datos publicados</span><button class="btn btn-light" data-action="vias-refresh" ${tacticalBusy?'disabled':''}>↻ Recargar vista</button><button class="btn btn-primary" data-action="vias-export-one" ${viaExportBusy?'disabled':''}>${viaExportBusy?'Generando…':'⤓ Diapositiva de esta vía'}</button><button class="btn btn-light" data-action="vias-export-all" ${viaExportBusy?'disabled':''}>⤓ PPT todas las vías</button></div></section><div class="panel via-controls"><label>Vía<select class="select" id="via-filter">${viasData.vias.map(v=>`<option value="${escape(v.name)}" ${v.name===selected?'selected':''}>${escape(v.name)}</option>`).join('')}</select></label><label>Severidad<select class="select" id="via-severity">${severityOptions}</select></label></div><div class="via-totals" aria-label="Resumen total de integraciones por vía"><div class="via-total via-total-ready"><span>Integraciones listas</span><strong>${viewModel.ready}</strong></div><div class="via-total via-total-pending"><span>Integraciones pendientes</span><strong>${viewModel.pending}</strong></div></div><p class="via-total-explanation">Se cuentan integraciones únicas de la vía para el filtro seleccionado. Una integración presente en varias etapas se cuenta una sola vez; el detalle permanece distribuido por etapa.</p>${emptyNotices}${viaReadSource==='google_sheets'?viaDiagnostics(viasData.diagnostic,'',viaConfigOpen):''}<div class="via-grid">${compact}</div><p class="via-footnote">«Lista» significa Validada. Los demás estados se presentan como pendientes; los registros sin correspondencia se identifican expresamente. La severidad Crítica equivale a criticidad Alta con fondo verde, y Alta a criticidad Alta sin fondo verde. Los datos no representan conformidades adicionales.</p>`;
 }
 async function exportViaSlides(all){
  if(!viasData?.vias?.length){alertMsg('Primero carga la hoja IntegracionesEtapa.','error');return;}
@@ -515,13 +702,13 @@ function tacticalDetail(entry){
  ${pair('Cierre pruebas SOFTPLAN / GTI',entry.testsClose)}
  ${pair('Validación GSJ',entry.gsjValidation)}
  </div><div class="tactical-detail-wide">${pair('Estado situacional / hitos',entry.history)}${pair('Consideraciones',entry.considerations)}</div>
- <div class="tactical-source-reference">Fuente: ${escape(entry.sheet)} · fila ${entry.row} · Criticidad: ${escape(entry.criticality||'No registrada')}${entry.green?' · Resaltada en verde en la fuente':''}</div></div>`;
+ </div>`;
 }
 function tacticalIntegrationRow(entry){
  const expanded=tacticalOpened.has(entry.id),dateAlert=!!entry.dateAlerts?.length;
  const severity=entry.high?(entry.green?'<span class="tactical-severity tactical-severity-critical">Crítica</span>':'<span class="tactical-severity tactical-severity-high">Alta</span>'):'';
  return `<div class="tactical-item ${entry.green?'tactical-item-green':''} ${dateAlert?'tactical-item-date-alert':''}">
- <button class="tactical-item-button" data-tactical-toggle="${escape(entry.id)}" aria-expanded="${expanded}" title="Consultar el estado situacional y fechas"><span class="tactical-item-title">${escape(entry.name)}</span><span class="tactical-severity-row">${severity}</span>${entry.green?'<span class="tactical-flag" title="La criticidad tiene relleno verde en Excel">◆ Destacada en origen</span>':''}${dateAlert?`<span class="tactical-date-flag" title="Fecha pendiente: ${escape(entry.dateAlerts.map(a=>a.field).join(', '))}">⚠ Fecha por confirmar</span>`:''}<span class="tactical-item-meta">${escape(entry.dependency||'Dependencia no indicada')}</span><span class="tactical-chevron">${expanded?'▾':'▸'}</span></button>
+ <button class="tactical-item-button" data-tactical-toggle="${escape(entry.id)}" aria-expanded="${expanded}" title="Consultar el estado situacional y fechas"><span class="tactical-item-title">${escape(entry.name)}</span><span class="tactical-severity-row">${severity}</span>${entry.green?'<span class="tactical-flag" title="Integración destacada por criticidad">◆ Crítica</span>':''}${dateAlert?`<span class="tactical-date-flag" title="Fecha pendiente: ${escape(entry.dateAlerts.map(a=>a.field).join(', '))}">⚠ Fecha por confirmar</span>`:''}<span class="tactical-item-meta">${escape(entry.dependency||'Dependencia no indicada')}</span><span class="tactical-chevron">${expanded?'▾':'▸'}</span></button>
  ${expanded?tacticalDetail(entry):''}</div>`;
 }
 const matchesTacticalText=entry=>!tacticalQuery||norm([entry.name,entry.dependency,entry.history,entry.considerations,entry.statusRaw].join(' ')).includes(norm(tacticalQuery));
@@ -554,14 +741,14 @@ function tacticalSecondaryBucketGroup(label,items){
 }
 function renderTactical(){
  const view=el('view-tactical');if(!view)return;
- if(!tacticalData){view.innerHTML=`<div class="tactical-intro panel"><div><div class="eyebrow">SEGUIMIENTO TÁCTICO · LABORAL</div><h2>Integraciones por clasificación</h2><p>Fuente privada independiente: hoja «Seguimiento» del documento táctico de Google Drive.</p></div><button class="btn btn-primary" data-action="tactical-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Consultando Google…':'↻ Actualizar resumen táctico'}</button></div>${tacticalError?`<div class="notice error">${escape(tacticalError)}</div>`:''}<div class="tactical-placeholder">La información táctica todavía no se ha cargado. Autoriza una cuenta con acceso al segundo documento y actualiza esta pestaña. La fuente técnica del tablero permanece independiente.</div>`;return;}
+ if(!tacticalData){view.innerHTML=neonLoadPlaceholder('Resumen táctico',tacticalError);return;}
  const summary=getTacticalSummary(tacticalData), counts=tacticalCategoryCounts(tacticalData.entries);
- const coverageNotice=summary.all!==CATALOGO_FIJO.length?`<div class="notice"><strong>Control de cobertura:</strong> Seguimiento contiene ${summary.all} registros y el catálogo fijo de Laboral contiene ${CATALOGO_FIJO.length}. Revisar posibles diferencias, duplicados o integraciones adicionales; no se eliminan automáticamente.</div>`:'';
+ const coverageNotice=summary.all!==CATALOGO_FIJO.length?`<div class="notice"><strong>Control de cobertura:</strong> Se registran ${summary.all} integraciones y el catálogo de Laboral contempla ${CATALOGO_FIJO.length}. Conviene revisar la diferencia; no se eliminan registros automáticamente.</div>`:'';
  const category=TACTICAL_CATEGORIES.find(c=>c.id===tacticalCategoryFilter)||TACTICAL_CATEGORIES[0];
  const categoryEntries=tacticalData.entries.filter(e=>tacticalMatchesCategory(e,category.id));
  const visible=categoryEntries.filter(e=>matchesTacticalState(e)&&matchesTacticalText(e));
  const search=`<div class="tactical-search"><input class="input" id="tactical-search" placeholder="Buscar integración o dependencia…" value="${escape(tacticalQuery)}"><button class="btn btn-light btn-sm" data-action="tactical-clear" title="Limpiar búsqueda, estado y categoría">Limpiar filtros</button></div>`;
- const filterToolbar=`<div class="tactical-filter-bar panel"><div class="tactical-filter-field"><label for="tactical-category-filter">Clasificar integraciones</label><select id="tactical-category-filter" class="input" aria-label="Filtrar integraciones por severidad, ciclo o tipo">${TACTICAL_CATEGORIES.map(c=>`<option value="${c.id}" ${c.id===category.id?'selected':''}>${escape(c.label)} (${counts[c.id]})</option>`).join('')}</select></div><div class="tactical-filter-summary"><strong>${counts[category.id]} registros</strong><span> de ${summary.all} en Seguimiento</span></div></div><p class="tactical-filter-explanation">${category.id==='critica'?'Crítica: criticidad «Alta» en L y relleno verde en esa celda.':category.id==='alta'?'Alta: criticidad «Alta» en L, sin relleno verde. Las críticas se muestran en el filtro independiente.':category.id==='todas'?'Crítica = «Alta» con celda L verde; Alta = «Alta» sin celda verde. Los filtros de ciclo y tipo se basan en el valor de la columna D.':`Categoría «${escape(category.label)}»: coincidencia con el valor de estado/tipo de la columna D.`} La clasificación proviene del Excel, filas 1–${TACTICAL_MAX_ROW}.</p>`;
+ const filterToolbar=`<div class="tactical-filter-bar panel"><div class="tactical-filter-field"><label for="tactical-category-filter">Clasificar integraciones</label><select id="tactical-category-filter" class="input" aria-label="Filtrar integraciones por severidad, ciclo o tipo">${TACTICAL_CATEGORIES.map(c=>`<option value="${c.id}" ${c.id===category.id?'selected':''}>${escape(c.label)} (${counts[c.id]})</option>`).join('')}</select></div><div class="tactical-filter-summary"><strong>${counts[category.id]} registros</strong><span> de ${summary.all} integraciones</span></div></div>`;
  // En «Todas», conservar el tablero de prioridad original; para severidades, conservar las columnas por estado.
  const statusMode=['todas','critica','alta'].includes(category.id);
  const primary=statusMode?(category.id==='todas'?summary.high:categoryEntries):[];
@@ -573,7 +760,7 @@ function renderTactical(){
  const groupedUnknown=primaryOtherBucketOrder.map(label=>({label,items:unknown.filter(e=>tacticalSecondaryBucket(e)===label)})).filter(group=>group.items.length);
  const statusContent=`<div class="tactical-kpis">${cards}</div><section class="tactical-main"><div class="tactical-section-title"><div><h2>${escape(mainTitle)}</h2><p>Selecciona una integración para revisar sus dependencias, fechas, hitos y consideraciones.</p></div>${search}</div><div class="tactical-columns">${TACTICAL_STATES.filter(st=>tacticalStateFilter==='Todos'||tacticalStateFilter===st).map(st=>tacticalCard(st,primary)).join('')}</div>${groupedUnknown.map(group=>`<div class="tactical-uncategorized"><div class="tactical-uncategorized-head"><h3>${escape(group.label)}</h3><div class="tactical-header-total"><span>Total</span><strong>${group.items.length}</strong></div></div>${group.items.map(tacticalIntegrationRow).join('')}</div>`).join('')}<p class="tactical-mini-note">${primary.filter(e=>matchesTacticalState(e)&&matchesTacticalText(e)).length} registro(s) priorizado(s) visible(s). <strong class="tactical-date-count">${primary.filter(e=>e.dateAlerts?.length).length} con alertas de fechas</strong>.</p></section>`;
  // Para Ciclo 2, 2/3, Manual y otros tipos no existe KPI de los cuatro estados: listar directamente.
- const categoryContent=`<section class="tactical-main"><div class="tactical-section-title"><div><h2>${escape(category.label)}</h2><p>${visible.length} de ${categoryEntries.length} integraciones visibles. Su estado de origen se conserva sin reinterpretarlo.</p></div>${search}</div><div class="tactical-category-grid">${visible.map(e=>`<article class="tactical-category-card"><div class="tactical-category-card-top"><span class="tactical-raw-state">${escape(e.statusRaw||'Sin estado')}</span><span class="tactical-category-ref">Fila ${e.row}</span></div>${tacticalIntegrationRow(e)}</article>`).join('')||'<div class="tactical-empty tactical-category-empty">No hay integraciones para los filtros seleccionados.</div>'}</div></section>`;
+ const categoryContent=`<section class="tactical-main"><div class="tactical-section-title"><div><h2>${escape(category.label)}</h2><p>${visible.length} de ${categoryEntries.length} integraciones visibles.</p></div>${search}</div><div class="tactical-category-grid">${visible.map(e=>`<article class="tactical-category-card"><div class="tactical-category-card-top"><span class="tactical-raw-state">${escape(e.statusRaw||'Sin estado')}</span></div>${tacticalIntegrationRow(e)}</article>`).join('')||'<div class="tactical-empty tactical-category-empty">No hay integraciones para los filtros seleccionados.</div>'}</div></section>`;
  const otherVisible=summary.other.filter(e=>matchesTacticalState(e)&&matchesTacticalText(e));
  const secondaryGroups=TACTICAL_STATES.filter(st=>summary.otherCounts[st]>0).map(st=>tacticalSecondaryStateGroup(st,summary.other)).join('');
  const otherBucketOrder=['Ciclo 2','Ciclo 2/3','Funcionalidad nativa del sistema','Manual','No aplica integración','Otras clasificaciones'];
@@ -581,7 +768,7 @@ function renderTactical(){
  const otherBucketCounts=Object.fromEntries(otherBucketOrder.map(label=>[label,nonStateEntries.filter(e=>tacticalSecondaryBucket(e)===label).length]));
  const secondaryBuckets=otherBucketOrder.filter(label=>otherBucketCounts[label]>0).map(label=>tacticalSecondaryBucketGroup(label,nonStateEntries)).join('');
  const secondary=category.id==='todas'?`<section class="panel tactical-secondary"><button class="tactical-secondary-header" data-action="tactical-secondary" aria-expanded="${tacticalSecondaryOpen}"><span class="tactical-secondary-header-main"><span class="eyebrow">VISTA SECUNDARIA</span><strong>Integraciones no priorizadas</strong><small>Criticidad diferente de Alta o no informada · ${summary.other.length} registros</small></span><span class="tactical-secondary-header-side"><span class="tactical-header-total"><span>Total</span><strong>${summary.other.length}</strong></span><span class="tactical-secondary-chevron">${tacticalSecondaryOpen?'▾':'▸'}</span></span></button>${tacticalSecondaryOpen?`<div class="tactical-secondary-body"><div class="tactical-secondary-counts">${TACTICAL_STATES.map(st=>`<span>${escape(st)}: <b>${summary.otherCounts[st]}</b></span>`).join('')}${otherBucketOrder.filter(label=>otherBucketCounts[label]>0).map(label=>`<span>${escape(label)}: <b>${otherBucketCounts[label]}</b></span>`).join('')}</div><div class="tactical-secondary-groups">${secondaryGroups}${secondaryBuckets}</div>${!otherVisible.length?'<p class="tactical-empty">No hay registros con el filtro seleccionado.</p>':''}</div>`:''}</section>`:'';
- view.innerHTML=`<section class="tactical-intro panel"><div><div class="eyebrow">ESPECIALIDAD LABORAL · SEGUIMIENTO TÁCTICO</div><h2>Status integraciones</h2><p>${summary.all} registros en Seguimiento · ${counts.critica} Críticas · ${counts.alta} Altas · ${summary.other.length} no priorizadas por severidad</p></div><div class="tactical-intro-actions"><span class="tactical-origin">${escape(tacticalOrigin)} · ${new Date(tacticalData.readAt).toLocaleString('es-PE')}</span><div class="button-row"><button class="btn btn-light btn-sm" data-action="tactical-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Actualizando…':'↻ Actualizar táctico'}</button><button class="btn btn-primary btn-sm" data-action="tactical-export" ${(tacticalBusy||tacticalExportBusy)?'disabled':''}>${tacticalExportBusy?'Generando diapositiva…':'⤓ Generar diapositiva resumen'}</button></div></div></section>${tacticalError?`<div class="notice error">${escape(tacticalError)}. Se muestran los últimos datos de la sesión actual.</div>`:''}${coverageNotice}${filterToolbar}${statusMode?statusContent:categoryContent}${secondary}${tacticalData.warnings.length?`<div class="scope-notice"><b>Verificación de origen:</b> ${tacticalData.warnings.map(escape).join(' · ')}</div>`:''}<div class="tactical-footer">Fuente: Google Drive privado → hoja ${escape(tacticalData.sourceSheet)}, filas 1–${TACTICAL_MAX_ROW} inclusive. B: Integración · D: Estado o clasificación · E: Dependencia · G: Hitos · H/I/J: Fechas o textos · L: Criticidad y relleno verde · M: Consideraciones. <b>Crítica y Alta son filtros excluyentes; los filtros de ciclo y tipo usan D y pueden coincidir con una integración de Alta.</b> Puedes generar una diapositiva resumen en formato PowerPoint con el filtro táctico actualmente visible. Si el verde procede solo de formato condicional y no se exporta como relleno directo, podría no detectarse.</div>`;
+ view.innerHTML=`<section class="tactical-intro panel"><div><div class="eyebrow">ESPECIALIDAD LABORAL · SEGUIMIENTO TÁCTICO</div><h2>Status integraciones</h2><p>${summary.all} integraciones · ${counts.critica} Críticas · ${counts.alta} Altas · ${summary.other.length} no priorizadas por severidad</p></div><div class="tactical-intro-actions"><div class="button-row"><span class="neon-readonly-indicator">Datos publicados</span><button class="btn btn-light btn-sm" data-action="tactical-refresh" ${tacticalBusy?'disabled':''}>${tacticalBusy?'Actualizando…':'↻ Recargar vista'}</button><button class="btn btn-primary btn-sm" data-action="tactical-export" ${(tacticalBusy||tacticalExportBusy)?'disabled':''}>${tacticalExportBusy?'Generando diapositiva…':'⤓ Generar diapositiva resumen'}</button></div></div></section>${tacticalError?`<div class="notice error">${escape(tacticalError)}. Se muestran los últimos datos de la sesión actual.</div>`:''}${coverageNotice}${filterToolbar}${statusMode?statusContent:categoryContent}${secondary}${tacticalData.warnings.length?`<div class="scope-notice"><b>Verificación de origen:</b> ${tacticalData.warnings.map(escape).join(' · ')}</div>`:''}<div class="tactical-footer">La clasificación por severidad distingue integraciones críticas y altas. Los filtros de ciclo y tipo pueden coincidir con integraciones priorizadas.</div>`;
 }
 
 function groups(){return model?.integrations||[];}
@@ -838,7 +1025,229 @@ function removeNote(id){if(!confirm('¿Eliminar esta observación local? No podr
 function exportNotes(){const payload={schema:'pj-observaciones-v2',exportedAt:new Date().toISOString(),source:currentSource,observations:notes};const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='observaciones_integraciones_PJ.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);}
 async function importNotes(file){try{if(file.size>4*1024*1024)throw new Error('El respaldo supera el límite de 4 MB.');const json=JSON.parse(await file.text());const next=mergeObservationBackup(notes,json);if(saveNoteState(next)){render();alertMsg(`Respaldo importado: ${next.length} observaciones disponibles. Se conservaron registros preexistentes.`);}}catch(e){alertMsg('No se pudo importar el respaldo: '+e.message,'error');}}
 
-function render(){refreshSpecialtyUI();if(activeTab==='tactical')renderTactical();if(activeTab==='vias')renderVias();if(activeTab==='activity-flow')renderActivityFlow();if(activeTab==='documents')renderDocumentCatalog();if(activeTab==='systems')renderSystems();if(activeTab==='overview')renderOverview();if(activeTab==='integrations')renderIntegrations();if(activeTab==='endpoints')renderEndpoints();if(activeTab==='technical')renderTechnical();}
+function syncSource(moduleId){return syncSourceFor(moduleId,{tacticalSheets:viaRawSheets,documentSheets, tacticalOrigin:tacticalGoogleOrigin,documentOrigin});}
+function renderSync(){
+ if(!sessionCanEdit){el('view-sync').innerHTML='<section class="panel"><h2>Sincronización de datos</h2><p>Para importar, cotejar o publicar actualizaciones, inicia sesión con una cuenta editora autorizada.</p><button class="btn btn-primary" data-action="sync-auth">Iniciar sesión para sincronizar</button></section>';return;}
+ const available=Object.fromEntries(SYNC_MODULES.map(m=>[m.id,syncSource(m.id)]));
+ el('view-sync').innerHTML=renderSyncView({status:syncStatus,loading:syncLoading,feedback:syncFeedback,available,docMigrationStatus,tacticalMigrationStatus,viaMigrationStatus,flowMigrationStatus});
+}
+async function requestSync(path,options={}){
+ const publicRead=(options.method===undefined||options.method==='GET')&&/^\/api\/(?:resumen-tactico|integraciones-via|flujo-actividades)\?action=records$|^\/api\/documentos-clave\?action=catalog$/.test(path);
+ if(!publicRead&&!accessToken)await authorizeGoogle();
+ const response=await fetch(path,{...options,cache:'no-store',headers:{...(!publicRead?{Authorization:`Bearer ${accessToken}`}:{}) ,...(options.body?{'Content-Type':'application/json'}:{})}});
+ let data={};try{data=await response.json();}catch{}
+ if(!response.ok){if(response.status===401&&!publicRead)accessToken='';throw new Error(data.error||`La API devolvió HTTP ${response.status}.`);}
+ return data;
+}
+async function refreshSyncStatus(){
+ if(!sessionCanEdit)return;
+ if(syncLoading)return;
+ syncLoading=true;renderSync();
+ try{syncStatus=await requestSync('/api/sincronizacion');try{docMigrationStatus=await requestSync('/api/documentos-clave?action=status');}catch{docMigrationStatus=null;}try{tacticalMigrationStatus=await requestSync('/api/resumen-tactico?action=status');}catch{tacticalMigrationStatus=null;}try{viaMigrationStatus=await requestSync('/api/integraciones-via?action=status');}catch{viaMigrationStatus=null;}try{flowMigrationStatus=await requestSync('/api/flujo-actividades?action=status');}catch(e){flowMigrationStatus=null;syncFeedback.flujo_actividades={error:true,title:'Configuración del Flujo de actividades',message:e.message};}syncFeedback.global=null;}
+ catch(error){syncStatus=null;syncFeedback.global={error:true,title:'Conexión de sincronización',message:error.message};}
+ finally{syncLoading=false;renderSync();}
+}
+async function viaMigrationAction(action){
+ if(syncLoading)return;
+ syncLoading=true;syncFeedback.integraciones_via=null;renderSync();
+ try{
+  if(action==='rollback'){
+   if(!confirm('¿Restaurar Google Sheets para Integraciones por vía? El historial de Neon se conservará.'))return;
+   const data=await requestSync('/api/integraciones-via',{method:'POST',body:JSON.stringify({action:'rollback',confirm:true})});
+   syncFeedback.integraciones_via={title:'Fuente de vías restaurada',message:data.message};
+   if(viaReadSource==='neon')await changeViaReadSource('google_sheets');
+  }else{
+   if(action==='publish'){
+    if(!viaMigrationStatus?.preview?.canPublish)throw new Error('Ejecuta primero «Cotejar integraciones por vía» con resultados equivalentes.');
+    const updated=await loadTacticalPrivate();
+    if(!updated||!syncSource('integraciones_via')?.origin.startsWith('Drive privado'))throw new Error('Publicar requiere actualización desde Google Drive privado; no desde un Excel local.');
+   }
+   const source=syncSource('integraciones_via');if(!source)throw new Error('Carga primero IntegracionesEtapa desde el documento táctico.');
+   const snapshot=prepareSyncAction('integraciones_via',source).snapshot;
+   const body={action,mapping:viaColumnMapping||{},snapshot};
+   if(action==='publish'){
+    if(!confirm(`¿Publicar las ${viaMigrationStatus.preview.records} asociaciones en Neon? Se conservará Google Sheets y sus exportaciones PPT.`))return;
+    const data=await requestSync('/api/integraciones-via',{method:'POST',body:JSON.stringify({...body,action:'publish',confirm:true,batchId:viaMigrationStatus.latestBatch.id})});
+    syncFeedback.integraciones_via={title:'Vías publicadas en Neon',message:data.message,details:`${data.routeCount} vías · ${data.count} asociaciones`};
+    await changeViaReadSource('neon');
+   }else{
+    const data=await requestSync('/api/integraciones-via',{method:'POST',body:JSON.stringify({...body,action:'preview'})});
+    const local=viaGoogleData;
+    const reconstructed=extractViaEntries(snapshot,tacticalGoogleData,viaColumnMapping||{});
+    const parity=local?viaParityReport(local,reconstructed):null;
+    const equal=!!parity?.equal;
+    viaMigrationStatus={...viaMigrationStatus,...data,preview:{...data.preview,canPublish:data.preview.canPublish&&equal}};
+    syncFeedback.integraciones_via={error:!equal,title:'Cotejo de integraciones por vía',
+     message:`${data.preview.routes} vías · ${data.preview.stages} etapas · ${data.preview.records} asociaciones · ${data.preview.unmatched} sin correspondencia con Seguimiento.`,
+     details:`Nuevas: ${data.preview.comparison.added} · Cambiadas: ${data.preview.comparison.changed} · Retiradas: ${data.preview.comparison.removed}`,
+     list:[...(data.preview.warnings||[]),...(!equal?parity?.errors||['No se pudo comprobar equivalencia con Google Sheets.']:[])]};
+   }
+  }
+  const status=await requestSync('/api/integraciones-via?action=status');
+  viaMigrationStatus={...status,preview:action==='preview'?viaMigrationStatus.preview:null};
+  syncStatus=await requestSync('/api/sincronizacion');
+ }catch(e){syncFeedback.integraciones_via={error:true,title:'No se completó el cambio de Integraciones por vía',message:e.message};}
+ finally{syncLoading=false;renderSync();}
+}
+/** V1.15.4.1: publicar siempre vuelve a cotejar la fuente; nunca requiere un estado efímero en memoria. */
+async function flowMigrationAction(action){
+ if(syncLoading)return;
+ syncLoading=true;
+ syncFeedback.flujo_actividades={title:action==='publish'?'Comprobando antes de publicar':action==='preview'?'Cotejando Flujo de actividades':'Restaurando Google Sheets',
+  message:action==='publish'?'Actualizando el archivo privado, comparando la copia disponible con el flujo y validando los requisitos de Neon. Todavía no se han escrito cambios.':'Consultando el estado de las fuentes.'};
+ renderSync();
+ try{
+  if(action==='rollback'){
+   if(!confirm('¿Restaurar Google Sheets para Flujo de actividades? Las actividades y auditoría de Neon se conservarán.')){
+    syncFeedback.flujo_actividades={title:'Reversión cancelada',message:'No se realizaron cambios en Neon.'};return;
+   }
+   const data=await requestSync('/api/flujo-actividades',{method:'POST',body:JSON.stringify({action:'rollback',confirm:true})});
+   syncFeedback.flujo_actividades={title:'Flujo restaurado a Google Sheets',message:data.message};
+   if(activityReadSource==='neon')await changeActivityReadSource('google_sheets');
+  }else{
+   // Un clic en «Publicar» actualiza Google Drive y reconstruye el cotejo en esta
+   // misma operación. Antes el botón permanecía deshabilitado sin explicar por qué.
+   if(action==='publish'){
+    const refreshed=await loadTacticalPrivate();
+    if(!refreshed||!syncSource('flujo_actividades')?.origin.startsWith('Drive privado')){
+     throw new Error('No se pudo actualizar EtapaActividadIntegracion desde Google Drive privado. Revisa la autorización y vuelve a intentarlo.');
+    }
+   }
+   const source=syncSource('flujo_actividades');
+   if(!source)throw new Error('Carga primero EtapaActividadIntegracion desde Fuentes / Actualizar táctico.');
+   const snapshot=prepareSyncAction('flujo_actividades',source).snapshot;
+   // También para publicar, la API vuelve a comprobar que la copia y el
+   // Resumen táctico de referencia siguen siendo los publicados.
+   const data=await requestSync('/api/flujo-actividades',{method:'POST',body:JSON.stringify({action:'preview',snapshot})});
+   const reconstructed=extractFlowEntries(snapshot,tacticalGoogleData);
+   const parity=activityGoogleData?flowParityReport(activityGoogleData,reconstructed):null;
+   const equal=!!parity?.equal;
+   const valid=!!data.preview?.canPublish&&equal;
+   flowMigrationStatus={...flowMigrationStatus,...data,preview:{...data.preview,canPublish:valid}};
+   if(!valid){
+    syncFeedback.flujo_actividades={error:true,title:'Cotejo del Flujo de actividades incompleto',
+     message:'La publicación se ha detenido sin escribir en Neon. La fuente actual no coincide con la reconstrucción del flujo.',
+     details:`${data.preview?.activities||0} actividades · ${data.preview?.links||0} vínculos`,
+     list:[...(data.preview?.warnings||[]),...(parity?.errors||['No se pudo comprobar la equivalencia de Google Sheets.'])]};
+   }else if(action==='preview'){
+    syncFeedback.flujo_actividades={title:'Cotejo del Flujo de actividades satisfactorio',
+     message:`${data.preview.routes} vías · ${data.preview.steps} pasos · ${data.preview.activities} actividades (${data.preview.withoutIntegration} sin integración) · ${data.preview.links} enlaces.`,
+     details:`Nuevas: ${data.preview.comparison.added} · Modificadas: ${data.preview.comparison.changed} · Retiradas: ${data.preview.comparison.removed}`,
+     list:data.preview.warnings||[]};
+   }else if(action==='publish'){
+    // El usuario decide publicar SOLO después de comprobar la fuente actual;
+    // se utiliza el batch devuelto por el mismo cotejo, no un ID de sesión antiguo.
+    if(!confirm(`Cotejo satisfactorio: ${data.preview.activities} actividades y ${data.preview.links} asociaciones. ¿Publicar en Neon? Google Sheets seguirá disponible como respaldo.`)){
+     syncFeedback.flujo_actividades={title:'Publicación cancelada',message:'No se realizaron cambios en Neon; la equivalencia ya se comprobó.'};return;
+    }
+    const saved=await requestSync('/api/flujo-actividades',{method:'POST',body:JSON.stringify({action:'publish',confirm:true,batchId:data.latestBatch.id,snapshot})});
+    syncFeedback.flujo_actividades={title:saved.changed?'Flujo publicado en Neon':'Flujo ya publicado',message:saved.message,details:`${saved.routes} vías · ${saved.activities} actividades · ${saved.links} integraciones asociadas`};
+    await changeActivityReadSource('neon');
+   }
+  }
+  // Una falla al refrescar el panel NO debe ocultar una publicación ya confirmada.
+  try{
+   const status=await requestSync('/api/flujo-actividades?action=status');
+   flowMigrationStatus={...status,preview:action==='preview'?flowMigrationStatus?.preview:null};
+  }catch(e){syncFeedback.flujo_actividades.list=[...(syncFeedback.flujo_actividades.list||[]),`La operación terminó, pero no se actualizó el estado: ${e.message}`];}
+  try{syncStatus=await requestSync('/api/sincronizacion');}
+  catch(e){syncFeedback.flujo_actividades.list=[...(syncFeedback.flujo_actividades.list||[]),`No se actualizó el resumen de sincronización: ${e.message}`];}
+ }catch(e){syncFeedback.flujo_actividades={error:true,title:'No se completó el cambio del Flujo de actividades',message:e.message};}
+ finally{syncLoading=false;renderSync();}
+}
+
+async function tacticalMigrationAction(action){
+ if(syncLoading)return;
+ syncLoading=true;syncFeedback.resumen_tactico=null;renderSync();
+ try{
+  if(action==='rollback'){
+   if(!confirm('¿Restaurar Google Sheets para Resumen táctico? Las copias y el historial en Neon se conservarán.'))return;
+   const data=await requestSync('/api/resumen-tactico',{method:'POST',body:JSON.stringify({action:'rollback',confirm:true})});
+   syncFeedback.resumen_tactico={title:'Fuente restaurada',message:data.message};
+   if(tacticalReadSource==='neon')await changeTacticalReadSource('google_sheets');
+  }else{
+   const source=syncSource('resumen_tactico');
+   if(!source)throw new Error('Carga primero el archivo Seguimiento desde Google Drive.');
+   if(action==='publish'){
+    if(!tacticalMigrationStatus?.preview?.canPublish)throw new Error('Ejecuta antes «Cotejar Resumen táctico» y corrige las diferencias.');
+    const refreshed=await loadTacticalPrivate();
+    if(!refreshed)throw new Error('No se pudo actualizar Seguimiento desde Google Drive; no se publicará una lectura anterior.');
+    if(!syncSource('resumen_tactico')?.origin.startsWith('Drive privado'))throw new Error('Publicar requiere Google Drive privado; no basta un Excel local.');
+   }
+   const current=syncSource('resumen_tactico');
+   const snapshot=prepareSyncAction('resumen_tactico',current).snapshot;
+   const styles=tacticalStylesFromSheets(current.sheets);
+   if(action==='publish'){
+    const preview=tacticalMigrationStatus.preview;
+    if(!confirm(`¿Publicar ${preview.records} integraciones de Resumen táctico en Neon? Se conservará Google Sheets y los historiales.`))return;
+    const data=await requestSync('/api/resumen-tactico',{method:'POST',body:JSON.stringify({action:'publish',confirm:true,batchId:tacticalMigrationStatus.latestBatch.id,snapshot,styles})});
+    syncFeedback.resumen_tactico={title:'Resumen táctico publicado',message:data.message,details:`Integraciones: ${data.count} · Críticas: ${data.categories.critica} · Altas: ${data.categories.alta}`};
+    await changeTacticalReadSource('neon');
+   }else{
+    const data=await requestSync('/api/resumen-tactico',{method:'POST',body:JSON.stringify({action:'preview',snapshot,styles})});
+    tacticalMigrationStatus={...tacticalMigrationStatus,...data};const p=data.preview;
+    const local=tacticalGoogleData;
+    const parity=local?tacticalParityReport(local,extractTacticalEntries(snapshot,styles)):null;
+    const countMatches=!!parity?.equal;
+    syncFeedback.resumen_tactico={error:!countMatches||!p.canPublish,title:'Cotejo de Resumen táctico',message:`${p.records} integraciones en filas 1–36 · ${p.excludedWithName} fila(s) con nombre fuera del rango funcional.`,
+     details:`Nuevas: ${p.comparison.added} · Cambiadas: ${p.comparison.changed} · Retiradas: ${p.comparison.removed} · Críticas: ${p.categories.critica} · Altas: ${p.categories.alta}`,
+     list:[...p.warnings,...(!countMatches?[`La reconstrucción no coincide con Google Sheets: ${(parity?.mismatches||['Sin lectura Google']).slice(0,4).join(' · ')}`]:[])]};
+    if(!countMatches)tacticalMigrationStatus.preview.canPublish=false;
+   }
+  }
+  tacticalMigrationStatus=await requestSync('/api/resumen-tactico?action=status').then(status=>({...status,preview:action==='preview'?tacticalMigrationStatus.preview:null}));
+  syncStatus=await requestSync('/api/sincronizacion');
+ }catch(e){syncFeedback.resumen_tactico={error:true,title:'No se completó el cambio táctico',message:e.message};}
+ finally{syncLoading=false;renderSync();}
+}
+async function syncAction(action,moduleId){
+ if(syncLoading)return;
+ syncLoading=true;syncFeedback[moduleId]=null;renderSync();
+ try{
+  if(action==='history'){
+   const result=await requestSync(`/api/sincronizacion?action=history&module=${encodeURIComponent(moduleId)}`);
+   syncFeedback[moduleId]={title:'Últimas copias registradas',message:`${result.batches.length} importación(es) mostradas`,list:result.batches.map(b=>`${new Date(b.importedAt).toLocaleString('es-PE')} · ${b.rowCount} filas · ${b.checksum.slice(0,12)}…`)};
+  }else{
+   const {snapshot,validation}=prepareSyncAction(moduleId,syncSource(moduleId));
+   if(!validation.valid)throw new Error(validation.errors.join(' '));
+   if(action==='validate'){
+    const g=validation.columnStats?.[6],m=validation.columnStats?.[12];
+    const stats=moduleId==='resumen_tactico'&&g
+     ?`G · Estado situacional: máximo ${g.maxChars.toLocaleString('es-PE')} caracteres (límite ${g.limit.toLocaleString('es-PE')})${m?` · M · Consideraciones: máximo ${m.maxChars.toLocaleString('es-PE')}`:''} · Copia ${(validation.bytes/1000).toFixed(1)} KB`:'';
+    syncFeedback[moduleId]={title:'Estructura validada',message:`${validation.count} fila(s) con información; hoja ${snapshot.sourceSheet}. No se guardaron datos.`,details:stats,list:validation.warnings};
+   }
+   else{
+    const result=await requestSync('/api/sincronizacion',{method:'POST',body:JSON.stringify({...snapshot,sourceLabel:syncSource(moduleId).origin,action:action==='compare'?'compare':'stage'})});
+    const diff=result.comparison||{};
+    syncFeedback[moduleId]={title:action==='compare'?'Comparación completada':result.duplicate?'Copia ya registrada':'Copia preliminar guardada',message:result.message||'',details:`Filas nuevas: ${diff.added||0} · Modificadas: ${diff.changed||0} · Eliminadas: ${diff.removed||0} · Sin cambios: ${diff.unchanged||0}`,list:result.warnings};
+    if(action==='stage'){
+     // El guardado ya se completó. Si falla la lectura del estado posterior,
+     // NO informar falsamente que falló la importación.
+     try{syncStatus=await requestSync('/api/sincronizacion');}
+     catch(e){syncFeedback[moduleId].list=[...(syncFeedback[moduleId].list||[]),`Copia registrada, pero no se pudo actualizar el resumen: ${e.message}`];}
+     if(moduleId==='resumen_tactico'){
+      try{tacticalMigrationStatus=await requestSync('/api/resumen-tactico?action=status');}
+      catch(e){syncFeedback[moduleId].list=[...(syncFeedback[moduleId].list||[]),`No se pudo actualizar estado táctico: ${e.message}`];}
+     }
+     if(moduleId==='integraciones_via'){
+      try{viaMigrationStatus=await requestSync('/api/integraciones-via?action=status');}
+      catch(e){syncFeedback[moduleId].list=[...(syncFeedback[moduleId].list||[]),`No se pudo consultar el estado de vías: ${e.message}`];}
+     }
+     if(moduleId==='flujo_actividades'){
+      try{flowMigrationStatus=await requestSync('/api/flujo-actividades?action=status');}
+      catch(e){syncFeedback[moduleId].list=[...(syncFeedback[moduleId].list||[]),`No se pudo consultar el estado del flujo: ${e.message}`];}
+     }
+     if(moduleId==='documentos_clave'){
+      try{docMigrationStatus=await requestSync('/api/documentos-clave?action=status');}
+      catch(e){syncFeedback[moduleId].list=[...(syncFeedback[moduleId].list||[]),`No se pudo actualizar el estado de publicación: ${e.message}`];}
+     }
+    }
+   }
+  }
+ }catch(error){syncFeedback[moduleId]={error:true,title:'No se completó la operación',message:error.message};}
+ finally{syncLoading=false;renderSync();}
+}
+function render(){refreshSpecialtyUI();if(activeTab==='tactical')renderTactical();if(activeTab==='vias')renderVias();if(activeTab==='activity-flow')renderActivityFlow();if(activeTab==='documents')renderDocumentCatalog();if(activeTab==='sync')renderSync();if(activeTab==='systems')renderSystems();if(activeTab==='overview')renderOverview();if(activeTab==='integrations')renderIntegrations();if(activeTab==='endpoints')renderEndpoints();if(activeTab==='technical')renderTechnical();}
 function inspectIntegration(name){integrationFilter=name;systemFilter='';technicalIntegrationFilter='';query='';stateFilter='';equivFilter='';switchTab('endpoints');const ids=(model?.endpoints||[]).filter(e=>norm(e.integration)===norm(name));if(!ids.length)alertMsg(`${name}: no tiene endpoints/operaciones documentados en las hojas de detalle.`, 'error');}
 function showComponents(name){const i=groups().find(x=>norm(x.name)===norm(name));if(!i)return;
  const rows=i.components.map(c=>`<tr><td><strong>${escape(c.component)}</strong><span class="col-secondary">${escape(c.componentType||'Tipo no indicado')}</span></td><td>${statusBadge(c.status)}<span class="col-secondary">${escape(c.rawStatus||'Sin estado')}</span></td><td>${escape(c.owner||'No indicado')}</td><td>${escape(c.attention||'No indicado')}</td><td>${escape(c.dependency||'No indicada')}</td><td>${escape(c.glpi||'—')}</td><td>${c.observationsGTI?`<span class="col-secondary">${escape(trim(c.observationsGTI,160))}</span><span class="col-secondary">Sistemas!N${c.row}</span>`:'—'}</td><td>${c.observationsSoftplan?`<span class="col-secondary">${escape(trim(c.observationsSoftplan,160))}</span><span class="col-secondary">Sistemas!O${c.row}</span>`:'—'}</td><td>Sistemas!${c.row}</td></tr>`).join('');
@@ -872,25 +1281,25 @@ function exportCSV(type){if(!model)return;let header,rows,name;
 }
 function init(){
  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>switchTab(n.dataset.tab)));
- el('load-button').addEventListener('click',openImport);el('refresh-now').addEventListener('click',refreshGoogle);el('close-import').addEventListener('click',closeImport);
+ el('close-import').addEventListener('click',closeImport);
  el('import-modal').addEventListener('click',e=>{if(e.target===el('import-modal'))closeImport();});
  el('file-input').addEventListener('change',e=>{loadFile(e.target.files?.[0]);e.target.value='';});
  const drop=el('drop-zone');['dragenter','dragover'].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add('dragging');}));['dragleave','drop'].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove('dragging');}));drop.addEventListener('drop',e=>loadFile(e.dataTransfer?.files?.[0]));
  document.querySelectorAll('.source-tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.source-tab').forEach(b=>b.classList.toggle('active',b===t));el('pane-file').classList.toggle('hidden',t.dataset.source!=='file');el('pane-drive').classList.toggle('hidden',t.dataset.source!=='drive');}));
  el('drive-public').addEventListener('click',loadPublicDrive);el('tactical-private').addEventListener('click',()=>loadTacticalPrivate());el('tactical-file').addEventListener('change',e=>{loadTacticalFile(e.target.files?.[0]);e.target.value='';});el('drive-private').addEventListener('click',loadPrivateDrive);el('auto-refresh').addEventListener('change',configureRefresh);
- el('drive-url').value=DEFAULT_GOOGLE_URL||sessionStorage.getItem('drive-url')||'';currentDriveUrl=el('drive-url').value;el('auto-refresh').checked=!!DEFAULT_GOOGLE_URL;
+ el('drive-url').value=DEFAULT_GOOGLE_URL||sessionStorage.getItem('drive-url')||'';currentDriveUrl=el('drive-url').value;el('auto-refresh').checked=false;
  if(PRIVATE_GOOGLE_SOURCE){
   // Seleccionar Google Drive como pestaña inicial y mantener acceso anonimo fuera del flujo.
   const tab=document.querySelector('.source-tab[data-source="drive"]');if(tab)tab.click();
   el('drive-public').classList.add('hidden');
-  el('source-pill').textContent='Drive privado · falta autorizacion';
+  
   el('import-status').textContent='Documento privado: pulsa «Autorizar y leer privado» para iniciar sesion con Google.';
   el('drive-info').textContent='Fuente privada configurada. No se enviaran solicitudes anonimas a /api/drive. El acceso requiere tu cuenta autorizada y su consentimiento OAuth.';
  }
  refreshSpecialtyUI();
  el('drawer-backdrop').addEventListener('click',closeDrawer);
  document.body.addEventListener('click',e=>{
-  const a=e.target.closest('[data-action]');if(a){const type=a.dataset.action;if(type==='open-import')openImport();else if(type==='incidents-refresh')loadIncidentsForDocument(activeDocument());else if(type==='incidents-auth')authorizeIncidents();else if(type==='incidents-new'){incidentCreateOpen=!incidentCreateOpen;incidentEditingId='';documentActionFeedback=null;renderDocumentCatalog();if(incidentCreateOpen)el('incident-create-form')?.querySelector('[name=title]')?.focus({preventScroll:true});}else if(type==='incident-edit'){incidentEditingId=incidentEditingId===a.dataset.incidentId?'':a.dataset.incidentId;incidentCreateOpen=false;documentActionFeedback=null;renderDocumentCatalog();}else if(type==='docs-refresh')loadDocumentsPrivate();else if(type==='docs-clear'){documentQuery='';documentStateFilter='';documentTypeFilter='';documentSpecialtyFilter='';documentOwnerFilter='';renderDocumentCatalog();}else if(type==='docs-close-detail'){documentSelectedId='';incidentCode='';incidentError='';documentActionFeedback=null;incidentCreateOpen=false;incidentDraft={};documentReviewDraft=null;documentReview=null;documentReviewHistory=[];incidentEditingId='';renderDocumentCatalog();}else if(type==='docs-config'){documentConfigOpen=!documentConfigOpen;renderDocumentCatalog();}else if(type==='docs-map-apply')applyDocumentMapping();else if(type==='docs-map-auto'){documentColumnMapping=null;if(documentSheets)receiveDocumentCatalog(documentSheets,documentOrigin);documentConfigOpen=!!documentError;renderDocumentCatalog();}else if(type==='tab-integrations')switchTab('integrations');else if(type==='tactical-refresh')loadTacticalPrivate();else if(type==='vias-refresh')loadTacticalPrivate();else if(type==='activity-refresh')loadTacticalPrivate();else if(type==='flow-expand'){const v=activityFlowData?.vias.find(v=>v.name===activitySelected);if(v)flowOpenedSteps=new Set(v.steps.map(s=>s.id));renderActivityFlow();}else if(type==='flow-collapse'){flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();}else if(type==='via-config-toggle'){viaConfigOpen=!viaConfigOpen;renderVias();}else if(type==='via-mapping-auto'){viaColumnMapping=null;viasData=viaRawSheets?parseVias(viaRawSheets,tacticalData):null;viaConfigOpen=!!viasData?.error;renderVias();}else if(type==='vias-export-one')exportViaSlides(false);else if(type==='vias-export-all')exportViaSlides(true);else if(type==='tactical-export')exportTacticalPpt();else if(type==='tactical-secondary'){tacticalSecondaryOpen=!tacticalSecondaryOpen;renderTactical();}else if(type==='tactical-clear'){tacticalStateFilter='Todos';tacticalCategoryFilter='todas';tacticalQuery='';renderTactical();}else if(type==='clear-catalog'){catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';render();}else if(type==='tab-systems')switchTab('systems');else if(type==='clear-filters'){query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';page=1;render();}else if(type==='close-drawer')closeDrawer();else if(type==='export-notes')exportNotes();else if(type==='import-notes')el('notes-import').click();return;}
+  const a=e.target.closest('[data-action]');if(a){const type=a.dataset.action;if(type==='public-retry')loadPublishedNeonDashboard();else if(type==='sync-auth')authorizeSynchronization();else if(type==='open-sync-source')openImport();else if(type==='tab-sync')switchTab('sync');else if(type==='sync-refresh')refreshSyncStatus();else if(type==='sync-tactical-preview')tacticalMigrationAction('preview');else if(type==='sync-tactical-publish')tacticalMigrationAction('publish');else if(type==='sync-tactical-rollback')tacticalMigrationAction('rollback');else if(type==='sync-flow-preview')flowMigrationAction('preview');else if(type==='sync-flow-publish')flowMigrationAction('publish');else if(type==='sync-flow-rollback')flowMigrationAction('rollback');else if(type==='sync-via-preview')viaMigrationAction('preview');else if(type==='sync-via-publish')viaMigrationAction('publish');else if(type==='sync-via-rollback')viaMigrationAction('rollback');else if(type==='sync-docs-preview')documentMigrationAction('preview');else if(type==='sync-docs-publish')documentMigrationAction('publish');else if(type==='sync-docs-rollback')documentMigrationAction('rollback');else if(['sync-validate','sync-compare','sync-stage','sync-history'].includes(type))syncAction(type.slice(5),a.dataset.syncModule);else if(type==='open-import')switchTab('sync');else if(type==='incidents-refresh')loadIncidentsForDocument(activeDocument());else if(type==='incidents-auth')authorizeIncidents();else if(type==='incidents-new'){incidentCreateOpen=!incidentCreateOpen;incidentEditingId='';documentActionFeedback=null;renderDocumentCatalog();if(incidentCreateOpen)el('incident-create-form')?.querySelector('[name=title]')?.focus({preventScroll:true});}else if(type==='incident-edit'){incidentEditingId=incidentEditingId===a.dataset.incidentId?'':a.dataset.incidentId;incidentCreateOpen=false;documentActionFeedback=null;renderDocumentCatalog();}else if(type==='docs-refresh')refreshDocumentNeon();else if(type==='docs-clear'){documentQuery='';documentStateFilter='';documentTypeFilter='';documentSpecialtyFilter='';documentOwnerFilter='';renderDocumentCatalog();}else if(type==='docs-close-detail'){documentSelectedId='';incidentCode='';incidentError='';documentActionFeedback=null;incidentCreateOpen=false;incidentDraft={};documentReviewDraft=null;documentReview=null;documentReviewHistory=[];incidentEditingId='';renderDocumentCatalog();}else if(type==='docs-config'){documentConfigOpen=!documentConfigOpen;renderDocumentCatalog();}else if(type==='docs-map-apply'&&documentReadSource==='google_sheets')applyDocumentMapping();else if(type==='docs-map-auto'&&documentReadSource==='google_sheets'){documentColumnMapping=null;if(documentSheets)receiveDocumentCatalog(documentSheets,documentOrigin);documentConfigOpen=!!documentError;renderDocumentCatalog();}else if(type==='tab-integrations')switchTab('integrations');else if(type==='tactical-refresh')refreshTacticalCurrent();else if(type==='vias-refresh')refreshViaCurrent();else if(type==='activity-refresh')refreshActivityCurrent();else if(type==='flow-expand'){const v=activityFlowData?.vias.find(v=>v.name===activitySelected);if(v)flowOpenedSteps=new Set(v.steps.map(s=>s.id));renderActivityFlow();}else if(type==='flow-collapse'){flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();}else if(type==='via-config-toggle'){viaConfigOpen=!viaConfigOpen;renderVias();}else if(type==='via-mapping-auto'){viaColumnMapping=null;viaGoogleData=viaRawSheets?parseVias(viaRawSheets,tacticalGoogleData):null;viasData=viaGoogleData;viaReadSource='google_sheets';viaError='';viaConfigOpen=!!viasData?.error;renderVias();}else if(type==='vias-export-one')exportViaSlides(false);else if(type==='vias-export-all')exportViaSlides(true);else if(type==='tactical-export')exportTacticalPpt();else if(type==='tactical-secondary'){tacticalSecondaryOpen=!tacticalSecondaryOpen;renderTactical();}else if(type==='tactical-clear'){tacticalStateFilter='Todos';tacticalCategoryFilter='todas';tacticalQuery='';renderTactical();}else if(type==='clear-catalog'){catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';render();}else if(type==='tab-systems')switchTab('systems');else if(type==='clear-filters'){query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';page=1;render();}else if(type==='close-drawer')closeDrawer();else if(type==='export-notes')exportNotes();else if(type==='import-notes')el('notes-import').click();return;}
   const docSelect=e.target.closest('[data-document-select]');if(docSelect){const nextId=docSelect.dataset.documentSelect;const wasOpen=nextId===documentSelectedId;documentSelectedId=wasOpen?'':nextId;documentActionFeedback=null;incidentCreateOpen=!wasOpen;incidentDraft={};documentReviewDraft=null;documentReview=null;documentReviewHistory=[];incidentEditingId='';incidentAuthorized=false;incidentCode='';renderDocumentCatalog();if(!wasOpen)loadIncidentsForDocument(activeDocument());return;}
   const fstep=e.target.closest('[data-flow-step]');if(fstep){const id=fstep.dataset.flowStep;flowOpenedSteps.has(id)?flowOpenedSteps.delete(id):flowOpenedSteps.add(id);renderActivityFlow();return;}
   const fact=e.target.closest('[data-flow-activity]');if(fact){const id=fact.dataset.flowActivity;flowOpenedActivities.has(id)?flowOpenedActivities.delete(id):flowOpenedActivities.add(id);renderActivityFlow();return;}
@@ -914,9 +1323,11 @@ function init(){
  });
  document.body.addEventListener('input',e=>{if(e.target.closest?.('#document-review-form')){documentReviewDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.closest?.('#incident-create-form')){incidentDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.id==='document-search'){documentQuery=e.target.value;const pos=e.target.selectionStart;renderDocumentCatalog();const next=el('document-search');if(next){next.focus();next.setSelectionRange(pos,pos);}return;} if(e.target.id==='tactical-search'){tacticalQuery=e.target.value;const position=e.target.selectionStart;renderTactical();const input=el('tactical-search');input?.focus();try{input?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='catalog-search'){catalogSearch=e.target.value;const position=e.target.selectionStart;render();const target=el('catalog-search');target?.focus();try{target?.setSelectionRange(position,position);}catch{}return;}if(e.target.id==='search-filter'){query=e.target.value;page=1;const start=e.target.selectionStart;render();const next=el('search-filter');next?.focus();try{next?.setSelectionRange(start,start);}catch{}}});
  document.body.addEventListener('submit',e=>{if(e.target?.id==='via-column-form'){e.preventDefault();applyViaMapping(e.target);}else if(e.target?.id==='document-review-form'){e.preventDefault();saveDocumentReview(e.target);}else if(e.target?.id==='incident-create-form'){e.preventDefault();saveIncident(e.target,'create');}else if(e.target?.matches('[data-incident-update]')){e.preventDefault();saveIncident(e.target,'update');}else if(e.target?.matches('[data-incident-comment]')){e.preventDefault();saveIncident(e.target,'comment');}});
- document.body.addEventListener('change',e=>{if(e.target.closest?.('#document-review-form')){documentReviewDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.closest?.('#incident-create-form')){incidentDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.id==='document-local-file'){loadDocumentFile(e.target.files?.[0]);e.target.value='';return;}if(e.target.id==='document-status'){documentStateFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-type'){documentTypeFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-specialty'){documentSpecialtyFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-owner'){documentOwnerFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='flow-via'){activitySelected=e.target.value;flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();return;}if(e.target.id==='flow-severity'){activitySeverity=e.target.value;renderActivityFlow();return;}if(e.target.id==='via-filter'){viaSelected=e.target.value;renderVias();return;}if(e.target.id==='via-severity'){viaSeverity=e.target.value;renderVias();return;}if(e.target.id==='tactical-category-filter'){tacticalCategoryFilter=e.target.value;tacticalStateFilter='Todos';tacticalOpened=new Set();renderTactical();return;}if(e.target.id==='specialty-filter'){specialty=e.target.value==='laboral'?'laboral':'todas';page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';technicalFilter='';catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';closeDrawer();refreshSpecialtyUI();render();return;}if(e.target.id==='catalog-observation-filter'){catalogObserved=e.target.value;render();return;}if(e.target.id==='catalog-availability-filter'){catalogAvailability=e.target.value;render();return;}if(e.target.id==='catalog-link-filter'){catalogLinkFilter=e.target.value;render();return;}if(e.target.id==='status-filter'){stateFilter=e.target.value;page=1;render();}if(e.target.id==='equiv-filter'){equivFilter=e.target.value;page=1;render();}if(e.target.id==='integration-filter'){integrationFilter=e.target.value;page=1;render();}if(e.target.id==='system-filter'){systemFilter=e.target.value;integrationFilter='';technicalIntegrationFilter='';page=1;render();}if(e.target.id==='technical-integration-filter'){technicalIntegrationFilter=e.target.value;integrationFilter='';page=1;render();}if(e.target.id==='technical-filter'){technicalFilter=e.target.value;render();}});
+ document.body.addEventListener('change',e=>{if(e.target.closest?.('#document-review-form')){documentReviewDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.closest?.('#incident-create-form')){incidentDraft=Object.fromEntries(new FormData(e.target.form).entries());return;}if(e.target.id==='document-status'){documentStateFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-type'){documentTypeFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-specialty'){documentSpecialtyFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='document-owner'){documentOwnerFilter=e.target.value;renderDocumentCatalog();return;}if(e.target.id==='flow-via'){activitySelected=e.target.value;flowOpenedSteps=new Set();flowOpenedActivities=new Set();renderActivityFlow();return;}if(e.target.id==='flow-severity'){activitySeverity=e.target.value;renderActivityFlow();return;}if(e.target.id==='via-filter'){viaSelected=e.target.value;renderVias();return;}if(e.target.id==='via-severity'){viaSeverity=e.target.value;renderVias();return;}if(e.target.id==='tactical-category-filter'){tacticalCategoryFilter=e.target.value;tacticalStateFilter='Todos';tacticalOpened=new Set();renderTactical();return;}if(e.target.id==='specialty-filter'){specialty=e.target.value==='laboral'?'laboral':'todas';page=1;query='';stateFilter='';equivFilter='';integrationFilter='';systemFilter='';technicalIntegrationFilter='';technicalFilter='';catalogSearch='';catalogObserved='todos';catalogAvailability='todos';catalogLinkFilter='todos';closeDrawer();refreshSpecialtyUI();render();return;}if(e.target.id==='catalog-observation-filter'){catalogObserved=e.target.value;render();return;}if(e.target.id==='catalog-availability-filter'){catalogAvailability=e.target.value;render();return;}if(e.target.id==='catalog-link-filter'){catalogLinkFilter=e.target.value;render();return;}if(e.target.id==='status-filter'){stateFilter=e.target.value;page=1;render();}if(e.target.id==='equiv-filter'){equivFilter=e.target.value;page=1;render();}if(e.target.id==='integration-filter'){integrationFilter=e.target.value;page=1;render();}if(e.target.id==='system-filter'){systemFilter=e.target.value;integrationFilter='';technicalIntegrationFilter='';page=1;render();}if(e.target.id==='technical-integration-filter'){technicalIntegrationFilter=e.target.value;integrationFilter='';page=1;render();}if(e.target.id==='technical-filter'){technicalFilter=e.target.value;render();}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeImport();}});
- render();
- if(DEFAULT_GOOGLE_URL&&!PRIVATE_GOOGLE_SOURCE&&CONFIG_SOURCE.autoLoad!==false)queueMicrotask(()=>loadPublicDrive());
+ switchTab('tactical');updateNeonAccessIndicator();
+ // Intentar cargar la publicación desde Neon desde la apertura de la página.
+ // Si OAuth necesita interacción, se muestra el acceso explícito sin consultar Google Sheets.
+ queueMicrotask(()=>loadPublishedNeonDashboard());
 }
 init();
