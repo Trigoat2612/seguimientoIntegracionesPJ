@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {renderIncidentSection} from '../bitacora-ui.js';
-import {parseDocumentCatalog} from '../catalogo-documentos.js';
+import {renderIncidentSection} from '../src/client/ui/bitacora-ui.js';
+import {parseDocumentCatalog} from '../src/shared/documents/catalogo-documentos.js';
 
 const documents=new Map([['CatalogoDocumentos',[
  ['Cod Documento','Nombre Documento'],['2.3','Acuerdo de Alcance funcional'],['4.1','Doc 4.1'],['4.10','Doc 4.10']
@@ -24,7 +24,7 @@ assert.match(drafted,/Revisar apartado 4.10/);
 assert.match(drafted,/value="GTI"/);
 const authed=renderIncidentSection({document:parsed.documents[0],authorized:true,canEdit:true,createOpen:true});
 assert.match(authed,/id="incident-create-form"/);
-const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
 assert.match(source,/doc-expanded-row/);
 assert.match(source,/documentExpandedDetail\(d,baseOnly\)/);
 assert.doesNotMatch(source, /\+detail\+/);

@@ -1,10 +1,10 @@
 /** V1.15.2: publicar/consultar/revertir Seguimiento sin afectar otros módulos. */
 import {createHash} from 'node:crypto';
 import {db} from './incidencias.js';
-import {identifyEditor} from '../autorizacion-servidor.js';
-import {extractTacticalEntries,compareTacticalEntries} from '../resumen-tactico-migracion.js';
-import {normalizeForChecksum} from '../sincronizacion-modelo.js';
-import {tacticalCategoryCounts} from '../tactical.js';
+import {identifyEditor} from '../src/server/autorizacion-servidor.js';
+import {extractTacticalEntries,compareTacticalEntries} from '../src/shared/tactical/resumen-tactico-migracion.js';
+import {normalizeForChecksum} from '../src/shared/sync/sincronizacion-modelo.js';
+import {tacticalCategoryCounts} from '../src/shared/tactical/tactical.js';
 const error=(res,status,message)=>res.status(status).json({error:message});
 const noCache=res=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');};
 async function control(sql){

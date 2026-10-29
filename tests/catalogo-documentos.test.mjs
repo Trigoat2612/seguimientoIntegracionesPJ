@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseDocumentCatalog, inspectDocumentCatalog, documentCatalogSummary, filterDocumentCatalog} from '../catalogo-documentos.js';
+import {parseDocumentCatalog, inspectDocumentCatalog, documentCatalogSummary, filterDocumentCatalog} from '../src/shared/documents/catalogo-documentos.js';
 
 function source(rows,name='CatalogoDocumentos'){return new Map([[name,rows]]);}
 const rows=[

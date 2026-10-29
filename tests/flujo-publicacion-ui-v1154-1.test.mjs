@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {renderSyncView} from '../sincronizacion-ui.js';
-const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+import {renderSyncView} from '../src/client/ui/sincronizacion-ui.js';
+const app = readFileSync(new URL('../src/client/app.js', import.meta.url), 'utf8');
 const source = {sheets:new Map(),origin:'Drive privado · Lista_Integraciones.xlsx'};
 const state = {modules:[]};
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateIncidentCreate,validateIncidentChange,validateIncidentComment,normalizedDocumentCode,validEvidenceUrl,summarizeIncidents} from '../bitacora-validacion.js';
+import {validateIncidentCreate,validateIncidentChange,validateIncidentComment,normalizedDocumentCode,validEvidenceUrl,summarizeIncidents} from '../src/shared/documents/bitacora-validacion.js';
 const fixture={documentCode:' doc-013 ',documentName:'Documento funcional',title:'Observación de firma',description:'La sección 4 no está documentada',severity:'Alta',assignedTo:'Softplan',dueDate:'2026-11-13',evidenceUrl:'https://drive.google.com/file/d/123/view'};
 test('Se usa Cod Documento normalizado como relación',()=>{assert.equal(normalizedDocumentCode('Doc-001'),'DOC-001');assert.equal(validateIncidentCreate(fixture).documentCode,'DOC-013');});
 test('Requiere título y descripción',()=>{assert.throws(()=>validateIncidentCreate({...fixture,title:''}),/título/);assert.throws(()=>validateIncidentCreate({...fixture,description:''}),/descripción/);});

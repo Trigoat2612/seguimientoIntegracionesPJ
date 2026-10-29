@@ -1,14 +1,14 @@
 /** Bitácora documental; Vercel Node API. Nunca confía en un correo enviado por el navegador. */
 import {neon} from '@neondatabase/serverless';
-import {identifyEditor} from '../autorizacion-servidor.js';
+import {identifyEditor} from '../src/server/autorizacion-servidor.js';
 import {randomUUID} from 'node:crypto';
-import {normalizedDocumentCode,validateIncidentCreate,validateIncidentChange,validateIncidentComment} from '../bitacora-validacion.js';
-import {validateReviewUpdate} from '../documento-revision.js';
-import {environmentReadiness,canShowLocalDiagnostic} from '../bitacora-config-servidor.js';
+import {normalizedDocumentCode,validateIncidentCreate,validateIncidentChange,validateIncidentComment} from '../src/shared/documents/bitacora-validacion.js';
+import {validateReviewUpdate} from '../src/shared/documents/documento-revision.js';
+import {environmentReadiness,canShowLocalDiagnostic} from '../src/server/bitacora-config-servidor.js';
 const noCache=res=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');};
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s||''));
 function bad(res,status,message){return res.status(status).json({error:message});}
-export {identifyEditor} from '../autorizacion-servidor.js';
+export {identifyEditor} from '../src/server/autorizacion-servidor.js';
 export function db(){if(!process.env.DATABASE_URL)throw Object.assign(new Error('Configura DATABASE_URL de Neon en el servidor.'),{status:503});return neon(process.env.DATABASE_URL);}
 const publicRow=r=>({id:r.id,documentCode:r.document_code,documentName:r.document_name,title:r.title,description:r.description,severity:r.severity,status:r.status,assignedTo:r.assigned_to,dueDate:r.due_date,evidenceUrl:r.evidence_url,revision:r.revision,createdBy:r.created_by,updatedBy:r.updated_by,createdAt:r.created_at,updatedAt:r.updated_at});
 const publicEvent=e=>({id:e.id,incidentId:e.incident_id,type:e.event_type,actor:e.actor_email,comment:e.comment,createdAt:e.created_at,before:e.before_snapshot,after:e.after_snapshot});
@@ -108,6 +108,7 @@ export default async function handler(req,res){
   if(err.status)return bad(res,err.status,err.message);
   if(/Solicitud inválida|obligatori|incidencia requiere|fecha compromiso|severidad|estado de incidencia|estado documental|evidencia|comentario|versión actual|versión del registro|revisión documental|código válido|código del documento|nombre del documento|motivo|100 caracteres|versión excede|cambio/.test(err.message||''))return bad(res,400,err.message);
   console.error('Incidencias API:',err.code||err.name||'DatabaseError');
+  if(err.code==='23514'&&err.constraint==='document_reviews_review_status_check')return bad(res,503,'Los estados de revisión de Neon todavía no están actualizados. Ejecuta estados-revision-v1_15_5_3.sql.');
   if(err.code==='42P01')return bad(res,503,'Faltan tablas en Neon. Ejecuta bitacora-v1_14_3-migracion.sql en la rama conectada a DATABASE_URL.');
   if(/ECONNREFUSED|ENOTFOUND|authentication failed|password authentication/i.test(err.message||''))return bad(res,503,'No se pudo conectar a Neon. Comprueba DATABASE_URL y la rama configurada.');
   return bad(res,500,'Neon rechazó la operación. Comprueba la conexión, las tablas y los permisos en la base de datos.');

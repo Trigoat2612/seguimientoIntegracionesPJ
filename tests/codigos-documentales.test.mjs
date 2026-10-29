@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readDocumentCode} from '../codigo-documento.js';
-import {parseDocumentCatalog,documentCatalogSummary,filterDocumentCatalog} from '../catalogo-documentos.js';
-import {normalizedDocumentCode,validateIncidentCreate} from '../bitacora-validacion.js';
+import {readDocumentCode} from '../src/shared/documents/codigo-documento.js';
+import {parseDocumentCatalog,documentCatalogSummary,filterDocumentCatalog} from '../src/shared/documents/catalogo-documentos.js';
+import {normalizedDocumentCode,validateIncidentCreate} from '../src/shared/documents/bitacora-validacion.js';
 
 const makeSheet=(rows,formatByCell={})=>{
  const sheets=new Map([['CatalogoDocumentos',rows]]);

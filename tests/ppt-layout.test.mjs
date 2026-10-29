@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {buildTacticalSlidePlan,PRESENTATION_STATES,estimateRows} from '../ppt-layout.js';
+import {buildTacticalSlidePlan,PRESENTATION_STATES,estimateRows} from '../src/client/presentations/ppt-layout.js';
 function makeEntry(id,state='Validada',name='Integración',dep='GTI'){
  return {id:`e-${id}`,row:id,name:`${name} ${id}`,dependency:dep,status:state,statusRaw:state,high:true,green:id%2===0,dateAlerts:[]};
 }

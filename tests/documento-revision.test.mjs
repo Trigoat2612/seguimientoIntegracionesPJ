@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateReviewUpdate,DOCUMENT_REVIEW_STATES} from '../documento-revision.js';
-import {environmentReadiness,editorConfigurationError,canShowLocalDiagnostic} from '../bitacora-config-servidor.js';
-import {renderIncidentSection} from '../bitacora-ui.js';
-import {parseDocumentCatalog} from '../catalogo-documentos.js';
-const base={documentCode:'4.10',documentName:'Documento de alcance',version:'V1.2',status:'En revisión',comment:'Se inició revisión',expectedRevision:0};
+import {validateReviewUpdate,DOCUMENT_REVIEW_STATES} from '../src/shared/documents/documento-revision.js';
+import {environmentReadiness,editorConfigurationError,canShowLocalDiagnostic} from '../src/server/bitacora-config-servidor.js';
+import {renderIncidentSection} from '../src/client/ui/bitacora-ui.js';
+import {parseDocumentCatalog} from '../src/shared/documents/catalogo-documentos.js';
+const base={documentCode:'4.10',documentName:'Documento de alcance',version:'V1.2',status:'En proceso de firma',comment:'Se inició revisión',expectedRevision:0};
 test('Metadatos conservan el código textual y la versión en Neon',()=>{
  const v=validateReviewUpdate(base);assert.equal(v.documentCode,'4.10');assert.equal(v.version,'V1.2');
- assert.equal(v.expectedRevision,0);assert.equal(DOCUMENT_REVIEW_STATES.includes('Validado'),false);
- assert.throws(()=>validateReviewUpdate({...base,status:'Validado'}),/estado documental/);
+ assert.equal(v.expectedRevision,0);assert.deepEqual(DOCUMENT_REVIEW_STATES,['Validado','En proceso de firma','Programado']);
+ assert.throws(()=>validateReviewUpdate({...base,status:'En revisión'}),/estado documental/);
+ for(const status of DOCUMENT_REVIEW_STATES)assert.equal(validateReviewUpdate({...base,status}).status,status);
  assert.throws(()=>validateReviewUpdate({...base,comment:''}),/motivo/);
  assert.throws(()=>validateReviewUpdate({...base,documentCode:4.10}),/texto/);
 });
@@ -24,8 +25,11 @@ test('Diagnóstico de API distingue variables presentes y faltantes sin revelar 
 test('Formulario de seguimiento registra versión, estado y comentario en Neon',()=>{
  const documents=new Map([['CatalogoDocumentos',[['Cod Documento','Nombre Documento'],['4.10','Documento de alcance']]]]);
  const doc=parseDocumentCatalog(documents).documents[0];
- const html=renderIncidentSection({document:doc,authorized:true,review:{version:'V3',status:'Observado',revision:2,updatedBy:'revisor',updatedAt:'2026-10-22'}});
+ const html=renderIncidentSection({document:doc,authorized:true,review:{version:'V3',status:'En proceso de firma',revision:2,updatedBy:'revisor',updatedAt:'2026-10-22'}});
  assert.match(html,/id="document-review-form"/);assert.match(html,/value="V3"/);
- assert.match(html,/<option value="Observado" selected>/);
+ assert.match(html,/<option value="En proceso de firma" selected>/);
+ for(const status of DOCUMENT_REVIEW_STATES)assert.match(html,new RegExp(`value="${status}"`));
+ assert.doesNotMatch(html,/value="Pendiente de revisión"/);
+ assert.doesNotMatch(html,/value="Observado"/);
  assert.doesNotMatch(html,/columna Estado/);
 });

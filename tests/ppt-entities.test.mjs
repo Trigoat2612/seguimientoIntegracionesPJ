@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import {entityFromColumnE,entityPresentation,integrationWithEntity} from '../ppt-entities.js';
-import {parseTactical} from '../tactical.js';
-import {buildTacticalSlidePlan,itemLabel} from '../ppt-layout.js';
+import {entityFromColumnE,entityPresentation,integrationWithEntity} from '../src/client/presentations/ppt-entities.js';
+import {parseTactical} from '../src/shared/tactical/tactical.js';
+import {buildTacticalSlidePlan,itemLabel} from '../src/client/presentations/ppt-layout.js';
 const group=(...e)=>[e.map(entry=>({entry,height:0.25}))];
 const pj={id:'e1',name:'Elevación Suprema',dependency:'PJ',status:'Sin clasificar',statusRaw:'Manual'};
 const same={id:'e2',name:'Consulta',dependency:'PJ'};

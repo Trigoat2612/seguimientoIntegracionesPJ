@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseVias,getViaView,getAllViaViews,matchesViaSeverity} from '../vias.js';
+import {parseVias,getViaView,getAllViaViews,matchesViaSeverity} from '../src/shared/routes/vias.js';
 const entries=[
  {name:'RENIEC',status:'Validada',statusRaw:'Validado',dependency:'GSJ',high:true,green:true},
  {name:'SUNARP',status:'En pruebas',statusRaw:'En Pruebas',dependency:'GTI',high:true,green:false},

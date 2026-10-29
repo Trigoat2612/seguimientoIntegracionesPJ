@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {parseVias,getViaView} from '../vias.js';
-import {exportViasPpt} from '../via-ppt-export.js';
+import {parseVias,getViaView} from '../src/shared/routes/vias.js';
+import {exportViasPpt} from '../src/client/presentations/via-ppt-export.js';
 
 const data={entries:[
  {name:'RENIEC',status:'Validada',statusRaw:'Validada',high:true,green:true},

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8');
-const app=read('app.js'),html=read('index.html'),notes=read('bitacora-ui.js');
+const app=read('src/client/app.js'),html=read('src/client/index.html'),notes=read('src/client/ui/bitacora-ui.js');
 
 test('Los cuatro módulos ofrecen solo sus acciones GET publicadas sin validación de identidad',()=>{
  for(const [file,action] of [['resumen-tactico','records'],['integraciones-via','records'],['flujo-actividades','records'],['documentos-clave','catalog']]){

@@ -9,7 +9,7 @@ globalThis.fetch=async url=>({ok:true,blob:async()=>new Blob([fs.readFileSync(pa
 globalThis.FileReader=class{
  readAsDataURL(blob){blob.arrayBuffer().then(arr=>{this.result=`data:image/png;base64,${Buffer.from(arr).toString('base64')}`;this.onload?.();}).catch(e=>this.onerror?.(e));}
 };
-const {exportTacticalSummaryPpt}=await import('../ppt-export.js');
+const {exportTacticalSummaryPpt}=await import('../src/client/presentations/ppt-export.js');
 const entry=(id,name,status,dep,high=true,green=false)=>({id:`e${id}`,row:id+1,name,status,statusRaw:status,dependency:dep,high,green,dateAlerts:[]});
 const entries=[...Array.from({length:9},(_,i)=>entry(i+1,'Validación e integración de RENIEC/'+(i+1),'Validada','GSJ',true,true)),
  ...Array.from({length:8},(_,i)=>entry(i+10,'Interoperabilidad SUNARP/'+(i+1),'Por validar','GTI',true,true)),

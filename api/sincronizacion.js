@@ -1,7 +1,7 @@
 /** V1.15.0: importaciones preliminares inmutables. Nunca activa Neon como fuente del dashboard. */
 import {createHash,randomUUID} from 'node:crypto';
 import {identifyEditor,db} from './incidencias.js';
-import {SYNC_MODULES,moduleFor,validateSheetSnapshot,normalizeForChecksum,compareSheetRows,snapshotByteLength,MAX_SNAPSHOT_BYTES} from '../sincronizacion-modelo.js';
+import {SYNC_MODULES,moduleFor,validateSheetSnapshot,normalizeForChecksum,compareSheetRows,snapshotByteLength,MAX_SNAPSHOT_BYTES} from '../src/shared/sync/sincronizacion-modelo.js';
 
 const reply=(res,status,error)=>res.status(status).json({error});
 const noCache=res=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');};

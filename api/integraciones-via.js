@@ -1,9 +1,9 @@
 /** V1.15.3: cotejo, publicación reversible y lectura de Integraciones por vía. */
 import {createHash} from 'node:crypto';
 import {db} from './incidencias.js';
-import {identifyEditor} from '../autorizacion-servidor.js';
-import {extractViaEntries,compareViaEntries,viaPublicationMetadata} from '../integraciones-via-migracion.js';
-import {normalizeForChecksum} from '../sincronizacion-modelo.js';
+import {identifyEditor} from '../src/server/autorizacion-servidor.js';
+import {extractViaEntries,compareViaEntries,viaPublicationMetadata} from '../src/shared/routes/integraciones-via-migracion.js';
+import {normalizeForChecksum} from '../src/shared/sync/sincronizacion-modelo.js';
 const send=(res,status,error)=>res.status(status).json({error});
 const noCache=res=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');};
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();

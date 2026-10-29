@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {makeSheetSnapshot} from '../sincronizacion-modelo.js';
-import {parseVias,getAllViaViews} from '../vias.js';
-import {extractViaEntries,compareViaEntries,viaParityReport,viaPublicationMetadata,rehydrateViasFromNeon} from '../integraciones-via-migracion.js';
+import {makeSheetSnapshot} from '../src/shared/sync/sincronizacion-modelo.js';
+import {parseVias,getAllViaViews} from '../src/shared/routes/vias.js';
+import {extractViaEntries,compareViaEntries,viaParityReport,viaPublicationMetadata,rehydrateViasFromNeon} from '../src/shared/routes/integraciones-via-migracion.js';
 const tact={entries:[
  {name:'RENIEC',status:'Validada',statusRaw:'Validado',dependency:'GSJ',high:true,green:true},
  {name:'SUNARP',status:'En pruebas',statusRaw:'En Pruebas',dependency:'GTI',high:true,green:false},
@@ -57,7 +57,7 @@ test('Misma asociación repetida en una etapa se deduplica; distintas etapas son
  assert.equal(getAllViaViews(model)[0].associations,2);
 });
 test('Migración SQL aditiva y conserva fuentes previas sin habilitar Flujo de actividades',()=>{
- const sql=readFileSync(new URL('../integraciones-via-v1_15_3.sql',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../database/migrations/integraciones-via-v1_15_3.sql',import.meta.url),'utf8');
  assert.match(sql,/CREATE TABLE IF NOT EXISTS route_integration_links/i);
  assert.match(sql,/CREATE TABLE IF NOT EXISTS route_published_metadata/i);
  assert.match(sql,/CREATE TABLE IF NOT EXISTS route_migration_events/i);
@@ -65,10 +65,10 @@ test('Migración SQL aditiva y conserva fuentes previas sin habilitar Flujo de a
  assert.doesNotMatch(sql,/DROP TABLE|TRUNCATE|DELETE FROM/i);
 });
 test('La UI conserva cotejo, publicación y PPT con Neon como fuente operativa',()=>{
- const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
  for(const token of ['sync-via-preview','sync-via-publish','vias-export-all','vias-export-one'])assert.match(app,new RegExp(token));
  assert.doesNotMatch(app,/data-action="vias-source-google"/);
- const ui=readFileSync(new URL('../sincronizacion-ui.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../src/client/ui/sincronizacion-ui.js',import.meta.url),'utf8');
  assert.doesNotMatch(ui,/data-action="sync-via-rollback"/);
  const api=readFileSync(new URL('../api/integraciones-via.js',import.meta.url),'utf8');
  assert.match(api,/ctl\.tactical\.published_batch_id/);

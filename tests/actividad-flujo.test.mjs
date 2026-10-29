@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseActividadFlujo,actividadView,ACTIVITY_SEVERITIES,inspectActividadFlujo} from '../actividad-flujo.js';
+import {parseActividadFlujo,actividadView,ACTIVITY_SEVERITIES,inspectActividadFlujo} from '../src/shared/flow/actividad-flujo.js';
 const seguimiento={entries:[
  {name:'RENIEC',status:'Validada',statusRaw:'Validada',high:true,green:true,dependency:'GSJ'},
  {name:'SERNOT',status:'En pruebas',statusRaw:'En Pruebas',high:true,green:false,dependency:'GTI'},

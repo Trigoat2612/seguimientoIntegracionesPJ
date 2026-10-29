@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {tacticalStylesFromSheets,extractTacticalEntries,compareTacticalEntries,tacticalParityReport,rehydrateTacticalFromNeon} from '../resumen-tactico-migracion.js';
-import {makeSheetSnapshot} from '../sincronizacion-modelo.js';
-import {parseTactical,tacticalCategoryCounts} from '../tactical.js';
-import {renderSyncView} from '../sincronizacion-ui.js';
+import {tacticalStylesFromSheets,extractTacticalEntries,compareTacticalEntries,tacticalParityReport,rehydrateTacticalFromNeon} from '../src/shared/tactical/resumen-tactico-migracion.js';
+import {makeSheetSnapshot} from '../src/shared/sync/sincronizacion-modelo.js';
+import {parseTactical,tacticalCategoryCounts} from '../src/shared/tactical/tactical.js';
+import {renderSyncView} from '../src/client/ui/sincronizacion-ui.js';
 function fixture(){
  const rows=[['','Integración','','Estado','Dependencia','','Estado situacional','Cierre desarrollo','Cierre pruebas','Validación GSJ','','Criticidad','Consideraciones']];
  rows.push(['','SINAREJ - Depósitos','','Por validar','GTI','','Pruebas\n'+('x'.repeat(4589)),'01/11/2026','Por informar','Revisión con GSJ','','Alta','Sin novedad']);
@@ -54,7 +54,7 @@ test('Rechaza rellenos adulterados o repetidos, pero no los formatos ausentes le
  assert.equal(extractTacticalEntries(snap,{fills:[],hasConditional:true}).entries.length,3);
 });
 test('No se altera el estado de otros módulos en la migración SQL',()=>{
- const sql=fs.readFileSync(new URL('../resumen-tactico-v1_15_2.sql',import.meta.url),'utf8');
+ const sql=fs.readFileSync(new URL('../database/migrations/resumen-tactico-v1_15_2.sql',import.meta.url),'utf8');
  assert.match(sql,/CREATE TABLE IF NOT EXISTS tactical_tracking/i);
  assert.match(sql,/CREATE TABLE IF NOT EXISTS tactical_migration_events/i);
  assert.match(sql,/module_key IN \('documentos_clave','resumen_tactico'\)/);
@@ -65,7 +65,7 @@ test('V1.15.5 mantiene cotejo y publicación solo desde Sincronización de datos
  const html=renderSyncView({available:{resumen_tactico:{origin:'Drive privado · Táctico'}},tacticalMigrationStatus:{activeSource:'neon',latestBatch:{id:'abc'},activeCount:35}});
  for(const action of ['sync-tactical-preview','sync-tactical-publish','open-sync-source'])assert.ok(html.includes(`data-action="${action}"`));
  assert.doesNotMatch(html,/data-action="sync-tactical-rollback"/);
- const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
  assert.match(app,/loadPublishedNeonDashboard/);
  assert.match(app,/tacticalParityReport/);
  assert.match(app,/async function refreshTacticalCurrent\(\)\{return changeTacticalReadSource\('neon'\);\}/);

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {parseDocumentCatalog} from '../catalogo-documentos.js';
-import {makeSheetSnapshot} from '../sincronizacion-modelo.js';
-import {extractKeyDocuments,compareKeyDocuments,keyDocumentsAsSheets} from '../documentos-clave-migracion.js';
+import {parseDocumentCatalog} from '../src/shared/documents/catalogo-documentos.js';
+import {makeSheetSnapshot} from '../src/shared/sync/sincronizacion-modelo.js';
+import {extractKeyDocuments,compareKeyDocuments,keyDocumentsAsSheets} from '../src/shared/documents/documentos-clave-migracion.js';
 const snap=rows=>makeSheetSnapshot(new Map([['CatalogoDocumentos',rows]]),'documentos_clave');
 test('Catálogo 4.1, 4.10 y 4.100 conserva tres identificadores únicos',()=>{
  const docs=extractKeyDocuments(snap([['Cod Documento','Nombre Documento'],['4.1','Uno'],['4.10','Diez'],['4.100','Cien']]));
@@ -24,7 +24,7 @@ test('Cotejo por códigos no confunde cambio de orden, alta, nombre y baja',()=>
  assert.deepEqual({added:diff.added,removed:diff.removed,renamed:diff.renamed,unchanged:diff.unchanged},{added:1,removed:1,renamed:1,unchanged:0});
 });
 test('SQL de V1.15.1 crea catálogo y auditoría y preserva bitácora',()=>{
- const sql=readFileSync(new URL('../documentos-clave-v1_15_1.sql',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../database/migrations/documentos-clave-v1_15_1.sql',import.meta.url),'utf8');
  assert.match(sql,/CREATE TABLE IF NOT EXISTS key_documents/);
  assert.match(sql,/document_code TEXT PRIMARY KEY/);
  assert.match(sql,/key_document_migration_events/);

@@ -1,5 +1,5 @@
 /** Identidad autenticada para la interfaz. No requiere acceso a Google Drive. */
-import {identifyViewer} from '../autorizacion-servidor.js';
+import {identifyViewer} from '../src/server/autorizacion-servidor.js';
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  res.setHeader('X-Content-Type-Options','nosniff');

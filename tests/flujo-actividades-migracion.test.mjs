@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {makeSheetSnapshot} from '../sincronizacion-modelo.js';
-import {parseActividadFlujo,actividadView,ACTIVITY_SEVERITIES} from '../actividad-flujo.js';
-import {extractFlowEntries,rehydrateFlowFromNeon,flowPublicationMetadata,flowParityReport,compareFlowModels} from '../flujo-actividades-migracion.js';
+import {makeSheetSnapshot} from '../src/shared/sync/sincronizacion-modelo.js';
+import {parseActividadFlujo,actividadView,ACTIVITY_SEVERITIES} from '../src/shared/flow/actividad-flujo.js';
+import {extractFlowEntries,rehydrateFlowFromNeon,flowPublicationMetadata,flowParityReport,compareFlowModels} from '../src/shared/flow/flujo-actividades-migracion.js';
 const tact={entries:[
  {name:'RENIEC',status:'Validada',statusRaw:'Validado',high:true,green:true,dependency:'GSJ'},
  {name:'SERNOT',status:'En pruebas',statusRaw:'En Pruebas',high:true,green:false,dependency:'GTI'},
@@ -74,14 +74,14 @@ test('No permite publicar sin hoja requerida, ni sin Seguimiento',()=>{
  assert.throws(()=>extractFlowEntries(snapshot(),{entries:[]}),/Resumen táctico/);
 });
 test('SQL aditivo, relaciones y auditoría; sin borrar tablas anteriores',()=>{
- const sql=readFileSync(new URL('../flujo-actividades-v1_15_4.sql',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../database/migrations/flujo-actividades-v1_15_4.sql',import.meta.url),'utf8');
  for(const token of ['activity_flow_activities','activity_flow_links','activity_flow_published_metadata','activity_flow_migration_events','migration_source_controls_allowed_sources_v1154'])assert.match(sql,new RegExp(token));
  assert.match(sql,/no_integration BOOLEAN/);
  assert.doesNotMatch(sql,/DROP TABLE|TRUNCATE|DELETE FROM/i);
 });
 test('V1.15.5 ofrece cotejo en Sincronización y conserva filtros de flujo desde Neon',()=>{
- const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
- const ui=readFileSync(new URL('../sincronizacion-ui.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../src/client/ui/sincronizacion-ui.js',import.meta.url),'utf8');
  const api=readFileSync(new URL('../api/flujo-actividades.js',import.meta.url),'utf8');
  for(const token of ['sync-flow-preview','sync-flow-publish','flow-severity','flow-collapse','flow-expand'])assert.match(app,new RegExp(token));
  assert.doesNotMatch(ui,/data-action="sync-flow-rollback"/);

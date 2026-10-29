@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseTactical,tacticalMatchesCategory,tacticalCategoryCounts,TACTICAL_CATEGORIES,TACTICAL_MAX_ROW} from '../tactical.js';
+import {parseTactical,tacticalMatchesCategory,tacticalCategoryCounts,TACTICAL_CATEGORIES,TACTICAL_MAX_ROW} from '../src/shared/tactical/tactical.js';
 
 const rows=Array.from({length:40},()=>[]);
 rows[0][1]='Integración'; rows[0][3]='Estado'; rows[0][11]='Criticidad';

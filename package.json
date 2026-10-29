@@ -1,6 +1,6 @@
 {
   "name": "tablero-integraciones-pj",
-  "version": "1.15.5.2",
+  "version": "1.15.5.6",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,6 +12,7 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "build": "node scripts/verify-build.mjs && node scripts/build-static.mjs",
-    "vercel-build": "npm run build"
+    "vercel-build": "npm run build",
+    "check": "npm test && npm run build"
   }
 }

@@ -8,7 +8,7 @@ globalThis.fetch=async url=>({ok:true,blob:async()=>new Blob([fs.readFileSync(pa
 globalThis.FileReader=class{
  readAsDataURL(blob){blob.arrayBuffer().then(arr=>{this.result=`data:image/png;base64,${Buffer.from(arr).toString('base64')}`;this.onload?.();}).catch(e=>this.onerror?.(e));}
 };
-const {exportTacticalSummaryPpt}=await import('../ppt-export.js');
+const {exportTacticalSummaryPpt}=await import('../src/client/presentations/ppt-export.js');
 const e=(id,name,status,dep,green=true)=>({id, name,status,statusRaw:status,dependency:dep,high:true,green,dateAlerts:[]});
 const valid=['RENIEC','CONADIS','SUNAT','SINAREJ - Aranceles','MIGRACIONES','SINOE / SINOTEL','MPE - Redireccionamiento'].map((name,i)=>e('v'+i,name,'Validada','GSJ'));
 const primary=[...valid,e('p1','ASBANC / Embargos','Por validar','GSJ'),e('p2','SERNOT','Por validar','GTI / SOFTPLAN'),e('t1','Inventario / SIE - Estadístico','En pruebas','Softplan / PJ'),e('d1','SINAREJ - Depósitos / Orden de Pago','En desarrollo','GTI'),e('d2','Sinarej Multas','En desarrollo','Softplan / GTI')];

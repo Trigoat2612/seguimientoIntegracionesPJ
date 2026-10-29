@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {renderIncidentSection} from '../bitacora-ui.js';
+import {renderIncidentSection} from '../src/client/ui/bitacora-ui.js';
 
 const doc={codigo:'4.10',documento:'Documento 4.10'};
 const items=[{id:'inc-1',title:'Incidencia A',status:'Abierta',severity:'Media',revision:1,description:'Texto A',createdAt:'2026-10-23T00:00:00Z'},
@@ -29,8 +29,8 @@ test('Error de nueva incidencia aparece en el formulario en lugar de la cabecera
 });
 
 test('La lógica del guardado no envía avisos a la cabecera global',()=>{
- const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
- const methods=source.slice(source.indexOf('async function saveDocumentReview('),source.indexOf('function documentExpandedDetail('));
+ const source=fs.readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
+ const methods=source.slice(source.indexOf('async function saveDocumentTracking('),source.indexOf('function documentExpandedDetail('));
  assert.doesNotMatch(methods,/alertMsg\(/);
  assert.match(methods,/documentActionFeedback=/);
  assert.match(methods,/focusDocumentActionFeedback\(\)/);

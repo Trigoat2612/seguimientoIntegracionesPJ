@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {exportViasPpt} from '../via-ppt-export.js';
+import {exportViasPpt} from '../src/client/presentations/via-ppt-export.js';
 
 let deck;
 class FakePpt {

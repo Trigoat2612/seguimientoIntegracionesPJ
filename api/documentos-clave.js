@@ -1,9 +1,9 @@
 /** V1.15.1: normalización y activación reversible SOLO de Documentos Clave. */
 import {createHash} from 'node:crypto';
 import {db} from './incidencias.js';
-import {identifyEditor} from '../autorizacion-servidor.js';
-import {extractKeyDocuments,compareKeyDocuments} from '../documentos-clave-migracion.js';
-import {normalizeForChecksum} from '../sincronizacion-modelo.js';
+import {identifyEditor} from '../src/server/autorizacion-servidor.js';
+import {extractKeyDocuments,compareKeyDocuments} from '../src/shared/documents/documentos-clave-migracion.js';
+import {normalizeForChecksum} from '../src/shared/sync/sincronizacion-modelo.js';
 const respond=(res,status,error)=>res.status(status).json({error});
 const noCache=res=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');};
 async function readControl(sql){

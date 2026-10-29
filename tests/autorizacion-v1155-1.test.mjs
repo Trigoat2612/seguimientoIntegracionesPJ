@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {identifyViewer,identifyEditor} from '../autorizacion-servidor.js';
+import {identifyViewer,identifyEditor} from '../src/server/autorizacion-servidor.js';
 import session from '../api/sesion.js';
 
-const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const app=readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
 const root=new URL('../',import.meta.url);
 const api=name=>readFileSync(new URL(`../api/${name}.js`,import.meta.url),'utf8');
 const req={headers:{authorization:'Bearer '+ 'a'.repeat(30)}};
@@ -69,7 +69,7 @@ test('Separación efectiva de tokens: inicio no solicita Drive y Drive nunca se 
  assert.match(app,/sessionCanEdit=!!session.canEdit/);
 });
 test('Bitácora muestra formularios a editores y modo lectura a lectores',async()=>{
- const {renderIncidentSection}=await import('../bitacora-ui.js');
+ const {renderIncidentSection}=await import('../src/client/ui/bitacora-ui.js');
  const document={codigo:'4.10',documento:'Pruebas'};
  const editor=renderIncidentSection({document,authorized:true,canEdit:true,items:[]});
  const lector=renderIncidentSection({document,authorized:true,canEdit:false,items:[]});

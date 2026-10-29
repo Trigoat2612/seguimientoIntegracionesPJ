@@ -1,19 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {makeSheetSnapshot,validateSheetSnapshot,compareSheetRows,locateSheet,SYNC_MODULES,syncColumnLimit,snapshotByteLength,MAX_SNAPSHOT_BYTES} from '../sincronizacion-modelo.js';
-import {renderSyncView,syncSourceFor,prepareSyncAction} from '../sincronizacion-ui.js';
+import {makeSheetSnapshot,validateSheetSnapshot,compareSheetRows,locateSheet,SYNC_MODULES,syncColumnLimit,snapshotByteLength,MAX_SNAPSHOT_BYTES} from '../src/shared/sync/sincronizacion-modelo.js';
+import {renderSyncView,syncSourceFor,prepareSyncAction} from '../src/client/ui/sincronizacion-ui.js';
 function example(){
  const m=new Map([
   ['CatalogoDocumentos', [['Cod Documento','Nombre Documento'],['4.1','Documento A'],['4.10','Documento B']]],
   ['Seguimiento', [['A','Integración','C','Estado'],['','SERNOT','','Por validar']]],
   ['IntegracionesEtapa',[['Vía','Etapa','Integración'],['Ordinaria','Trámite','SERNOT']]],
-  ['EtapaActividadIntegracion',[['Vía','Paso','Etapa','Actividad','Integración'],['Ordinaria','1','Trámite','Presentación','SERNOT']]]
+  ['EtapaActividadIntegracion',[['Vía','Paso','Etapa','Actividad','Integración'],['Ordinaria','1','Trámite','Presentación','SERNOT']]],
+  ['bitacoraDocumentosClave',[['Nro','Codigo de Documento','Fecha','Estado','Actividad','Comentarios','Responsable','Equipo Validador','Etapa'],['1','4.10','46316','PENDIENTE','Presentación','','SOFTPLAN','GTI, PEJENP','']]]
  ]);
  return m;
 }
-test('Las cuatro fuentes quedan identificadas sin alterar su hoja de origen',()=>{
- const sheets=example();assert.equal(SYNC_MODULES.length,4);
+test('Las cinco fuentes quedan identificadas sin alterar su hoja de origen',()=>{
+ const sheets=example();assert.equal(SYNC_MODULES.length,5);
  for(const m of SYNC_MODULES){const snap=makeSheetSnapshot(sheets,m.id);assert.equal(snap.sourceSheet,m.sheet);assert.equal(validateSheetSnapshot(snap).valid,true);}
  assert.equal(locateSheet(sheets,'invalid'),null);
 });
@@ -59,7 +60,7 @@ test('V1.15.5 reserva importación a Sincronización y muestra lectura Neon',()=
  assert.doesNotMatch(html,/data-action="sync-promote"/);
 });
 test('Esquema SQL declara fuentes fijadas y copias auditables, sin alterar incidencias',()=>{
- const sql=fs.readFileSync(new URL('../sincronizacion-v1_15_0.sql',import.meta.url),'utf8');
+ const sql=fs.readFileSync(new URL('../database/migrations/sincronizacion-v1_15_0.sql',import.meta.url),'utf8');
  assert.match(sql,/active_source\s+TEXT[^\n]+CHECK \(active_source = 'google_sheets'\)/);
  assert.match(sql,/migration_batches/);assert.match(sql,/migration_batch_rows/);assert.match(sql,/migration_audit_events/);
  assert.doesNotMatch(sql,/DROP TABLE/i);

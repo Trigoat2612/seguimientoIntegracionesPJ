@@ -1,9 +1,9 @@
 /** V1.15.4 · Publicación reversible, cotejo y lectura del Flujo de actividades. */
 import {createHash} from 'node:crypto';
 import {db} from './incidencias.js';
-import {identifyEditor} from '../autorizacion-servidor.js';
-import {extractFlowEntries,compareFlowModels,flowPublicationMetadata,rehydrateFlowFromNeon} from '../flujo-actividades-migracion.js';
-import {normalizeForChecksum} from '../sincronizacion-modelo.js';
+import {identifyEditor} from '../src/server/autorizacion-servidor.js';
+import {extractFlowEntries,compareFlowModels,flowPublicationMetadata,rehydrateFlowFromNeon} from '../src/shared/flow/flujo-actividades-migracion.js';
+import {normalizeForChecksum} from '../src/shared/sync/sincronizacion-modelo.js';
 const fail=(res,status,error)=>res.status(status).json({error});
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const hash=s=>createHash('sha256').update(s).digest('hex');

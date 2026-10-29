@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseVias,inspectViaSheet,getViaView} from '../vias.js';
+import {parseVias,inspectViaSheet,getViaView} from '../src/shared/routes/vias.js';
 const tracked={entries:[
   {name:'RENIEC',status:'Validada',statusRaw:'Validada',dependency:'GSJ',high:true,green:true},
   {name:'SUNARP',status:'En pruebas',statusRaw:'En Pruebas',dependency:'GTI',high:true,green:false}

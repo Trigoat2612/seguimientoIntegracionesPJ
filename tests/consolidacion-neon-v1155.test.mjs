@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
-const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const sync=readFileSync(new URL('../sincronizacion-ui.js',import.meta.url),'utf8');
+const app=readFileSync(new URL('../src/client/app.js',import.meta.url),'utf8');
+const html=readFileSync(new URL('../src/client/index.html',import.meta.url),'utf8');
+const sync=readFileSync(new URL('../src/client/ui/sincronizacion-ui.js',import.meta.url),'utf8');
 const block=(a,b)=>app.slice(app.indexOf(a),app.indexOf(b,app.indexOf(a)));
 test('El resumen táctico es la vista inicial, y En desarrollo concentra cinco pestañas',()=>{
  const first=html.match(/<button[^>]+data-tab="([^"]+)"/)?.[1];assert.equal(first,'tactical');
@@ -29,8 +29,8 @@ test('Sincronización conserva importación, cotejo, publicación, sin botones d
  for(const action of ['sync-tactical-publish','sync-via-publish','sync-flow-publish','sync-docs-publish'])assert.ok(sync.includes(`data-action="${action}"`));
  assert.doesNotMatch(sync,/data-action="sync-(?:tactical|via|flow|docs)-rollback"/);
 });
-test('Documentos Clave conserva bitácora y revisión, sin importar hojas en el módulo',()=>{
- assert.match(app,/renderIncidentSection/);assert.match(app,/loadIncidentsForDocument/);assert.match(app,/saveDocumentReview/);assert.match(app,/saveIncident/);
+test('Documentos Clave muestra seguimiento documental sin formulario de incidencias',()=>{
+ assert.match(app,/renderTrackingSection/);assert.match(app,/loadIncidentsForDocument/);assert.match(app,/saveDocumentTracking/);
  const catalog=block('function renderDocumentCatalog','function documentCatalogDiagnosticsPlaceholder');
  assert.match(catalog,/data-document-select/);
  assert.doesNotMatch(catalog,/for="document-local-file"|data-action="docs-source-google"/);

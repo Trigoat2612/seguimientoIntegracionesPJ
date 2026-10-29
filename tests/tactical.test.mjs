@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseTactical, tacticalDateAlerts, getTacticalSummary, TACTICAL_MAX_ROW} from '../tactical.js';
+import {parseTactical, tacticalDateAlerts, getTacticalSummary, TACTICAL_MAX_ROW} from '../src/shared/tactical/tactical.js';
 
 // Prueba autónoma, sin leer documentos privados ni solicitar OAuth.
 assert.equal(TACTICAL_MAX_ROW,36);

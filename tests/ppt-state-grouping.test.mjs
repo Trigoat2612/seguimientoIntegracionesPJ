@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {buildTacticalSlidePlan} from '../ppt-layout.js';
+import {buildTacticalSlidePlan} from '../src/client/presentations/ppt-layout.js';
 const e=(id,name,status='Validada',dependency='GSJ')=>({id, name,status,statusRaw:status,dependency,high:true,green:true,dateAlerts:[]});
 // Caso reportado en la diapositiva: MPE Redireccionamiento es Validada y
 // nunca debe migrar a un cuadro denominado «Otros estados» por falta de espacio.
