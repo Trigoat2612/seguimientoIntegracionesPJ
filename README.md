@@ -1,3 +1,13 @@
+# V1.15.5.7 · Resumen documental integrado
+
+**Nueva opción del menú principal: «Resumen documental».** La pantalla permite visualizar el estado actual por documento, indicadores de catálogo/seguimiento, la distribución por estados, pendientes prioritarios, anotaciones y acceso directo a la ficha con el historial completo. Incluye búsqueda y filtros por estado o equipo validador.
+
+Los resultados se construyen **a partir del catálogo activo y de las anotaciones ya publicadas en Neon**, no de cifras fijas del Excel. Una anotación nueva o la publicación de una bitácora invalida el resumen anterior. Las fechas no informadas permanecen en blanco en los datos y se muestran como «Sin fecha». El estado Validado es declarativo y no prueba por sí solo la ausencia de pendientes.
+
+**Instalación:** descomprime la nueva versión, conserva `.env.local` y las variables de Vercel, ejecuta `npm test`, `npm run build` y despliega. **No se requiere SQL nuevo ni modificaciones al Excel** si ya están aplicadas las migraciones de V1.15.5.5. El nuevo endpoint de lectura `/api/seguimiento-documental?action=dashboard` responde con los datos de seguimiento de los documentos activos; utiliza la misma política de lectura que la ficha documental. Protege el sitio a nivel de Vercel/red si contiene datos sensibles.
+
+---
+
 # V1.15.5.6 · Corrección de celdas vacías en la sincronización
 
 Se corrigió la validación de origen al comparar o guardar copias preliminares de `Lista_Integraciones.xlsx` o exportaciones de Google Sheets. Los vacíos de XLSX pueden originar arrays dispersos; antes, al serializarse como JSON, aparecían `null` y eran rechazados (por ejemplo, `Seguimiento!F2:F5`). Ahora se materializan como `""` en el cliente y se aceptan como celdas vacías en la validación del servidor. Se preservan las posiciones, el contenido de las bitácoras y los códigos documentales, y se siguen rechazando números y booleanos inesperados en instantáneas recibidas directamente por API.

@@ -1,3 +1,10 @@
+## V1.15.5.7 · Resumen táctico documental
+- Vista de primer nivel «Resumen documental» con KPIs dinámicos, distribución por estados y listado de documentos con última actividad, fecha, responsable y número de anotaciones.
+- Filtros por estado, equipo y búsqueda, y navegación directa a la bitácora de cada documento.
+- Nueva consulta de lectura por Neon exclusivamente de códigos activos, sin cambios de esquema.
+- Se recalcula tras registrar o publicar seguimiento. Se señalan posibles pendientes en documentos validados sin modificar su estado.
+- Sin SQL adicional; conserva las funcionalidades de V1.15.5.6.
+
 ## V1.15.5.6 · Celdas vacías en comparación de origen
 - `makeSheetSnapshot` usa materialización densa de filas y celdas XLSX omitidas, evitando huecos que se convierten en `null` al serializar JSON.
 - `validateSheetSnapshot` interpreta `null` y `undefined` exclusivamente como celdas vacías, con validación estricta del resto de los tipos.

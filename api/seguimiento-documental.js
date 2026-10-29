@@ -17,6 +17,26 @@ export default async function handler(req,res){
  try{
   const sql=db();
   if(req.method==='GET'){
+   if(req.query?.action==='dashboard'){
+    // Lectura pública limitada a documentos activos: mismos datos ya visibles por ficha.
+    // La secuencia para importaciones de una misma copia sigue source_row; las
+    // anotaciones manuales posteriores se ordenan por fecha de registro.
+    const rows=await sql`
+      SELECT d.document_code AS "documentCode",
+        (SELECT count(*)::int FROM document_tracking_entries t
+         WHERE upper(btrim(t.document_code))=upper(btrim(d.document_code))) AS "entryCount",
+        (SELECT json_build_object(
+           'id',t.id,'documentCode',t.document_code,'date',t.event_date,
+           'status',t.status,'activity',t.activity,'comments',t.comments,
+           'responsible',t.responsible,'validatorTeams',t.validator_teams,
+           'stage',t.stage,'origin',t.origin,'createdAt',t.created_at)
+         FROM document_tracking_entries t
+         WHERE upper(btrim(t.document_code))=upper(btrim(d.document_code))
+         ORDER BY t.created_at DESC,t.source_row DESC NULLS LAST,t.id DESC LIMIT 1) AS latest
+      FROM key_documents d WHERE d.is_active=true
+    `;
+    return res.status(200).json({rows,generatedAt:new Date().toISOString()});
+   }
    if(req.query?.action==='status'){
     const r=await sql`SELECT count(*)::int AS total, count(*) FILTER(WHERE origin='import')::int AS imported, count(*) FILTER(WHERE origin='manual')::int AS manual FROM document_tracking_entries`;
     return res.status(200).json(r[0]);
