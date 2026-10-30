@@ -1,3 +1,19 @@
+## V1.15.5.10 · Restaurar indicadores documentales condicionales
+- Restaurados los paneles «Documentos registrados», «Con seguimiento», «Atención prioritaria», «Validados» y «Sin seguimiento».
+- El total es siempre visible; los demás indicadores, solo con cantidad positiva.
+- El desglose por estado sigue ocultando estados con cero; se mantienen intactos los cálculos desde Neon.
+- Sin migraciones SQL, sin datos fijos ni cambios en otros módulos.
+
+## V1.15.5.9 · Ocultar estados documentales sin registros
+- En el Resumen documental se presenta únicamente el total y los estados con cantidad mayor que cero.
+- Se mantiene «Sin estado» solo cuando existan documentos sin clasificación.
+- Pruebas de regresión del renderizado, total y continuidad de las funcionalidades existentes. Sin SQL adicional.
+
+## V1.15.5.8 · Resumen documental simplificado
+- Vista de solo total de documentos y distribución por estado. Sin indicadores intermedios, alertas, filtros ni listado de seguimiento.
+- Categoría visual «Sin estado» para los documentos sin estado de bitácora; todos los documentos continúan contabilizados.
+- Los cálculos siguen basados en Neon, sin alterar la bitácora, los permisos ni las rutas de actualización. Sin SQL.
+
 ## V1.15.5.7 · Resumen táctico documental
 - Vista de primer nivel «Resumen documental» con KPIs dinámicos, distribución por estados y listado de documentos con última actividad, fecha, responsable y número de anotaciones.
 - Filtros por estado, equipo y búsqueda, y navegación directa a la bitácora de cada documento.

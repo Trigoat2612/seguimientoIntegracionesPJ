@@ -1,3 +1,37 @@
+# V1.15.5.15 · Seguimiento documental con filtros multiselección
+
+Se incorpora la tabla Seguimiento y pendientes sobre la base estable V1.15.5.14. Los filtros Estado y Equipo validador permiten marcar varias opciones (OR dentro de cada filtro, AND entre filtros), con selección independiente de los controles gerenciales superiores. Se conserva el orden natural de los códigos documentales y el acceso a fichas.
+
+# V1.15.5.14 · Resumen de documentos claves (diseño unificado)
+
+- Mantiene el encabezado, tipografía y estilos del dashboard general. La descripción aparece una vez en el encabezado principal.
+- Indicadores superiores flexibles, homogéneos y distribuidos sin huecos.
+- Orden numérico natural por código documental (4.1 antes de 4.10) en filtros, barras de bitácora y detalle.
+- Conserva avance, filtros, gráfico por estado, barras y bitácora publicada desde Neon.
+
+# V1.15.5.13 · Resumen documental estilo Documentos Claves
+
+- Restaurados los cinco paneles resumen originales sobre la distribución por estado.
+- «Documentos registrados» muestra el total siempre; los otros cuatro paneles solo aparecen si su cantidad es mayor a cero.
+- Los paneles del desglose por estado también se muestran solo con cantidad positiva.
+- No se restaura el listado detallado ni se modifica la bitácora, el catálogo, Neon o las APIs.
+- Diseño responsivo, sin botones de filtros inoperantes.
+- No requiere migraciones SQL.
+
+# V1.15.5.9 · Resumen documental: estados con datos
+
+- Presenta el total de documentos y un panel por estado **solo si su cantidad es mayor que cero**.
+- Se preserva el estado «Sin estado» cuando existe al menos un documento sin clasificación, para cuadrar los totales.
+- No se muestran estados con cantidad cero, ni indicadores de anotaciones, alertas o tablas de detalle.
+- No modifica el catálogo, la bitácora, Neon, ni otros módulos. No requiere migración SQL.
+
+# V1.15.5.8 · Resumen documental simplificado
+
+- La vista Resumen documental muestra únicamente el total y el desglose por estado del último registro.
+- Se omiten KPIs de seguimiento y anotaciones, alertas, filtros y tabla de detalle.
+- Los documentos sin estado se presentan como «Sin estado», para que la suma de grupos coincida con el total.
+- Se preservan las APIs, el catálogo, la bitácora y los datos de Neon; sin migraciones SQL.
+
 # V1.15.5.7 · Resumen documental integrado
 
 **Nueva opción del menú principal: «Resumen documental».** La pantalla permite visualizar el estado actual por documento, indicadores de catálogo/seguimiento, la distribución por estados, pendientes prioritarios, anotaciones y acceso directo a la ficha con el historial completo. Incluye búsqueda y filtros por estado o equipo validador.

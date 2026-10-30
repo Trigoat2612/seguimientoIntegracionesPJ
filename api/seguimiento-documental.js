@@ -35,7 +35,14 @@ export default async function handler(req,res){
          ORDER BY t.created_at DESC,t.source_row DESC NULLS LAST,t.id DESC LIMIT 1) AS latest
       FROM key_documents d WHERE d.is_active=true
     `;
-    return res.status(200).json({rows,generatedAt:new Date().toISOString()});
+    const entries=await sql`
+      SELECT t.id,t.document_code AS "documentCode",t.event_date AS date,t.status,t.activity,t.comments,t.responsible,t.validator_teams AS "validatorTeams",t.stage,t.origin,t.created_at AS "createdAt"
+      FROM document_tracking_entries t
+      INNER JOIN key_documents d ON upper(btrim(d.document_code))=upper(btrim(t.document_code))
+      WHERE d.is_active=true
+      ORDER BY upper(btrim(t.document_code)), t.event_date DESC NULLS LAST, t.created_at DESC, t.id DESC
+    `;
+    return res.status(200).json({rows,entries,generatedAt:new Date().toISOString()});
    }
    if(req.query?.action==='status'){
     const r=await sql`SELECT count(*)::int AS total, count(*) FILTER(WHERE origin='import')::int AS imported, count(*) FILTER(WHERE origin='manual')::int AS manual FROM document_tracking_entries`;
