@@ -115,3 +115,9 @@ public/                       Salida generada; NO editar ni subir al repositorio
 - **Neon:** la conexión se mantiene en funciones del servidor mediante `DATABASE_URL`, nunca en JavaScript público.
 
 Consulta [Arquitectura](docs/ARQUITECTURA.md), [Reorganización V1.15.5.4](docs/GUIA_REORGANIZACION_V1_15_5_4.md) e [Historial de versiones](docs/VERSIONES.md).
+
+## V1.15.5.16 · Fecha de última actualización documental
+
+En **Resumen de documentos claves**, debajo de «Última consulta» se muestra «Última actualización de datos». Este segundo valor se recupera dinámicamente del endpoint `GET /api/seguimiento-documental?action=dashboard` (campo `lastDataUpdatedAt`), se expresa en hora de Perú (America/Lima) y utiliza únicamente eventos ya existentes en Neon: últimas publicaciones efectivas de bitácora (con filas agregadas), nuevos seguimientos manuales y publicaciones del catálogo. La lectura del tablero o la carga de una copia de trabajo sin publicar no modifica la fecha. Si no existe registro, se presenta «No registrada».
+
+**Sin migraciones SQL nuevas.** Conserva la configuración de Neon/Vercel de la versión anterior.

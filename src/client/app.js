@@ -9,6 +9,7 @@ import {parseDocumentCatalog,inspectDocumentCatalog,documentCatalogSummary,filte
 import {renderTrackingSection} from './ui/seguimiento-documental-ui.js';
 import {buildDocumentDashboard,filterDocumentDashboard} from '../shared/documents/resumen-documental.js';
 import {renderDocumentDashboard} from './ui/resumen-documental-ui.js';
+import {formatDocumentPublicationDate} from './ui/fecha-publicacion-documental.js';
 import {parseTactical,getTacticalSummary,TACTICAL_STATES,TACTICAL_MAX_ROW,TACTICAL_CATEGORIES,tacticalMatchesCategory,tacticalCategoryCounts} from '../shared/tactical/tactical.js';
 import {CATALOGO_FIJO, linkCatalogItem} from './core/catalogo-fijo.js';
 import {buildModel,STAGE_PROGRESS} from './core/model.js';
@@ -34,7 +35,7 @@ let documentReadSource='neon',documentGoogleCatalog=null,documentNeonCatalog=nul
 let documentCatalog=null,documentSheets=null,documentOrigin='',documentColumnMapping=null,documentError='',documentBusy=false,documentQuery='',documentStateFilter='',documentTypeFilter='',documentSpecialtyFilter='',documentOwnerFilter='',documentSelectedId='',documentConfigOpen=false;
 let incidentDraft={},incidentCode='',incidentItems=[],incidentEvents=[],incidentLoading=false,incidentError='',incidentAuthorized=false,incidentCanEdit=false,incidentCreateOpen=false,incidentEditingId='',incidentBusy=false,incidentLimited=false;
 let documentReview=null,documentReviewHistory=[],documentReviewDraft=null,documentActionFeedback=null,trackingEntries=[],trackingDraft=null;
-let documentDashboardRows=null,documentDashboardEntries=[],documentDashboardGeneratedAt='',documentDashboardBusy=false,documentDashboardError='';
+let documentDashboardRows=null,documentDashboardEntries=[],documentDashboardGeneratedAt='',documentDashboardLastPublishedAt='',documentDashboardBusy=false,documentDashboardError='';
 let documentDashboardFilters={documents:[],states:[],responsibles:[],teams:[],query:''},documentDashboardExpanded=new Set();
 let documentDashboardTableFilters={query:'',states:[],teams:[]};
 let viasData=null,viaSelected='',viaSeverity='todas',viaExportBusy=false,viaRawSheets=null,viaColumnMapping=null,viaConfigOpen=false;
@@ -51,7 +52,7 @@ function alertMsg(msg,type='success'){el('alert-area').innerHTML=`<div class="no
 function setLoading(loading,msg='Analizando archivo…'){el('import-status').textContent=loading?msg:'Listo.';if(el('load-button'))el('load-button').disabled=loading;el('drive-public').disabled=loading;el('drive-private').disabled=loading;}
 function openImport(){el('import-modal').classList.remove('hidden');}
 function closeImport(){el('import-modal').classList.add('hidden');}
-function switchTab(tab){activeTab=tab;page=1;if(['overview','systems','integrations','endpoints','technical'].includes(tab))el('dev-menu')?.setAttribute('open','');else el('dev-menu')?.removeAttribute('open');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='document-dashboard'||tab==='documents');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();if(tab==='sync'&&sessionCanEdit&&!syncLoading)refreshSyncStatus();if(tab==='document-dashboard'&&!documentDashboardBusy&&!documentDashboardRows)refreshDocumentDashboard();}
+function switchTab(tab){activeTab=tab;page=1;if(['overview','systems','integrations','endpoints','technical'].includes(tab))el('dev-menu')?.setAttribute('open','');else el('dev-menu')?.removeAttribute('open');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='document-dashboard'||tab==='documents');el('updated-data-text')?.classList.toggle('hidden',tab!=='document-dashboard');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();if(tab==='sync'&&sessionCanEdit&&!syncLoading)refreshSyncStatus();if(tab==='document-dashboard'&&!documentDashboardBusy&&!documentDashboardRows)refreshDocumentDashboard();}
 async function loadWorkbook(bytes,origin){
  setLoading(true,'Leyendo las hojas y normalizando información…');
  try{const sheets=await parseXlsx(bytes);const d=parseDocumentCatalog(sheets,documentColumnMapping);if(d.found)receiveDocumentCatalog(sheets,origin);const candidate=buildModel(sheets,origin);const newHierarchy=buildHierarchy(candidate);
@@ -422,7 +423,7 @@ async function saveDocumentTracking(form){
  try{
   if(!sessionCanEdit)await authorizeEditor();
   await incidentRequest('/api/seguimiento-documental',{method:'POST',body:JSON.stringify({action:'create',entry:{...draft,documentCode:doc.codigo}})});
-  trackingDraft=null;documentDashboardRows=null;documentDashboardEntries=[];documentDashboardGeneratedAt='';documentDashboardExpanded=new Set();
+  trackingDraft=null;documentDashboardRows=null;documentDashboardEntries=[];documentDashboardGeneratedAt='';documentDashboardLastPublishedAt='';documentDashboardExpanded=new Set();
   documentActionFeedback={scope:'tracking',type:'success',message:'Anotación de seguimiento guardada correctamente.'};
   await loadIncidentsForDocument(doc);
  }catch(e){documentActionFeedback={scope:'tracking',type:'error',message:'No se pudo registrar el seguimiento: '+e.message};}
@@ -484,6 +485,10 @@ async function refreshDocumentDashboard(){
   documentDashboardRows=Array.isArray(response.rows)?response.rows:[];
   documentDashboardEntries=Array.isArray(response.entries)?response.entries:[];
   documentDashboardGeneratedAt=String(response.generatedAt||'');
+  documentDashboardLastPublishedAt=String(response.lastDataUpdatedAt||'');
+  const updateLabel=el('updated-data-text');
+  if(updateLabel)updateLabel.textContent='Última actualización de datos: '+formatDocumentPublicationDate(documentDashboardLastPublishedAt);
+  if(activeTab==='document-dashboard')el('updated-text').textContent='Última consulta: '+new Date().toLocaleString('es-PE');
  }catch(err){documentDashboardError=err.message||'No se pudo consultar el seguimiento documental.';}
  finally{documentDashboardBusy=false;renderDocumentDashboardView();}
 }
@@ -1230,7 +1235,7 @@ async function trackingMigrationAction(action){
    if(!confirm(`¿Incorporar ${p.newCount} anotaciones nuevas al seguimiento documental? Las anteriores se conservarán.`))return;
    const result=await requestSync('/api/seguimiento-documental',{method:'POST',body:JSON.stringify({action:'publish',batchId:batch.id,confirm:true})});
    syncFeedback.bitacora_documentos_clave={title:'Bitácora publicada',message:result.message};
-   trackingMigrationStatus=await requestSync('/api/seguimiento-documental?action=status');documentDashboardRows=null;documentDashboardEntries=[];documentDashboardGeneratedAt='';documentDashboardExpanded=new Set();
+   trackingMigrationStatus=await requestSync('/api/seguimiento-documental?action=status');documentDashboardRows=null;documentDashboardEntries=[];documentDashboardGeneratedAt='';documentDashboardLastPublishedAt='';documentDashboardExpanded=new Set();
    const doc=activeDocument();if(doc)await loadIncidentsForDocument(doc);
   }
  }catch(e){syncFeedback.bitacora_documentos_clave={error:true,title:'No se completó la publicación',message:e.message};}

@@ -42,7 +42,20 @@ export default async function handler(req,res){
       WHERE d.is_active=true
       ORDER BY upper(btrim(t.document_code)), t.event_date DESC NULLS LAST, t.created_at DESC, t.id DESC
     `;
-    return res.status(200).json({rows,entries,generatedAt:new Date().toISOString()});
+    // Solo publicaciones con cambios reales. Una copia importada sin publicar
+    // no altera esta fecha, y abrir la página tampoco.
+    const publication=await sql`
+      SELECT max(changed_at) AS "lastDataUpdatedAt"
+      FROM (
+        SELECT max(created_at) AS changed_at
+          FROM document_tracking_import_events WHERE rows_added>0
+        UNION ALL
+        SELECT max(created_at) FROM document_tracking_entries WHERE origin='manual'
+        UNION ALL
+        SELECT max(created_at) FROM key_document_migration_events WHERE event_type='published'
+      ) changes
+    `;
+    return res.status(200).json({rows,entries,lastDataUpdatedAt:publication[0]?.lastDataUpdatedAt||null,generatedAt:new Date().toISOString()});
    }
    if(req.query?.action==='status'){
     const r=await sql`SELECT count(*)::int AS total, count(*) FILTER(WHERE origin='import')::int AS imported, count(*) FILTER(WHERE origin='manual')::int AS manual FROM document_tracking_entries`;

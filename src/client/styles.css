@@ -678,3 +678,8 @@
 #view-document-dashboard .document-summary-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:360px}
 @media(max-width:1000px){#view-document-dashboard .docdash-table-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:580px){#view-document-dashboard .docdash-table-filters{grid-template-columns:1fr}}
+
+/* Fecha de publicación documental, separada de la hora de consulta. */
+.page-intro .updated{display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:normal;text-align:right}
+.page-intro #updated-data-text{color:#798ca3;font-size:11px}
+@media(max-width:700px){.page-intro .updated{align-items:flex-start;text-align:left}}
