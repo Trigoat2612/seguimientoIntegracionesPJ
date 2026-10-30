@@ -10,5 +10,6 @@ credentials*.json
 # Generado automaticamente por npm run build
 public/
 %LOCALAPPDATA%
+%LOCALAPPDATA%\Temp
 .vercel
 .env*.local
