@@ -41,7 +41,7 @@ let documentDashboardTableFilters={query:'',states:[],teams:[]};
 let viasData=null,viaSelected='',viaSeverity='todas',viaExportBusy=false,viaRawSheets=null,viaColumnMapping=null,viaConfigOpen=false;
 let viaReadSource='neon',viaGoogleData=null,viaNeonData=null,viaError='';
 let activityFlowData=null,activityGoogleData=null,activityNeonData=null,activityReadSource='neon',activityError='',activitySelected='',activitySeverity='todas',flowOpenedSteps=new Set(),flowOpenedActivities=new Set();
-let tacticalReadSource='neon',tacticalGoogleData=null,tacticalNeonData=null,tacticalGoogleOrigin='';
+let tacticalReadSource='neon',tacticalGoogleData=null,tacticalNeonData=null,tacticalGoogleOrigin='',tacticalLastPublishedAt='';
 let tacticalData=null,tacticalBusy=false,tacticalError='',tacticalOrigin='',tacticalQuery='',tacticalStateFilter='Todos',tacticalCategoryFilter='todas',tacticalOpened=new Set(),tacticalSecondaryOpen=false,tacticalExportBusy=false;
 let specialty='todas',catalogSearch='',catalogObserved='todos',catalogAvailability='todos',catalogLinkFilter='todos',catalogExpanded=new Set();
 let validationEvidence=calculateValidation(new Map(),CATALOGO_FIJO);
@@ -52,7 +52,12 @@ function alertMsg(msg,type='success'){el('alert-area').innerHTML=`<div class="no
 function setLoading(loading,msg='Analizando archivo…'){el('import-status').textContent=loading?msg:'Listo.';if(el('load-button'))el('load-button').disabled=loading;el('drive-public').disabled=loading;el('drive-private').disabled=loading;}
 function openImport(){el('import-modal').classList.remove('hidden');}
 function closeImport(){el('import-modal').classList.add('hidden');}
-function switchTab(tab){activeTab=tab;page=1;if(['overview','systems','integrations','endpoints','technical'].includes(tab))el('dev-menu')?.setAttribute('open','');else el('dev-menu')?.removeAttribute('open');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='document-dashboard'||tab==='documents');el('updated-data-text')?.classList.toggle('hidden',tab!=='document-dashboard');const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();if(tab==='sync'&&sessionCanEdit&&!syncLoading)refreshSyncStatus();if(tab==='document-dashboard'&&!documentDashboardBusy&&!documentDashboardRows)refreshDocumentDashboard();}
+function updateVisiblePublicationDate(){
+ const updateLabel=el('updated-data-text');if(!updateLabel)return;
+ if(activeTab==='tactical')updateLabel.textContent='Última actualización de datos: '+formatDocumentPublicationDate(tacticalLastPublishedAt);
+ else if(activeTab==='document-dashboard')updateLabel.textContent='Última actualización de datos: '+formatDocumentPublicationDate(documentDashboardLastPublishedAt);
+}
+function switchTab(tab){activeTab=tab;page=1;if(['overview','systems','integrations','endpoints','technical'].includes(tab))el('dev-menu')?.setAttribute('open','');else el('dev-menu')?.removeAttribute('open');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));Object.keys(tabTitles).forEach(t=>el('view-'+t).classList.toggle('hidden',t!==tab));document.querySelector('.specialty-filter-bar')?.classList.toggle('hidden',tab==='tactical'||tab==='vias'||tab==='activity-flow'||tab==='document-dashboard'||tab==='documents');el('updated-data-text')?.classList.toggle('hidden',!['tactical','document-dashboard'].includes(tab));updateVisiblePublicationDate();const [title,subtitle,crumb]=tabTitles[tab];el('page-title').textContent=title;el('page-subtitle').textContent=subtitle;el('crumb').textContent=crumb;render();if(tab==='sync'&&sessionCanEdit&&!syncLoading)refreshSyncStatus();if(tab==='document-dashboard'&&!documentDashboardBusy&&!documentDashboardRows)refreshDocumentDashboard();}
 async function loadWorkbook(bytes,origin){
  setLoading(true,'Leyendo las hojas y normalizando información…');
  try{const sheets=await parseXlsx(bytes);const d=parseDocumentCatalog(sheets,documentColumnMapping);if(d.found)receiveDocumentCatalog(sheets,origin);const candidate=buildModel(sheets,origin);const newHierarchy=buildHierarchy(candidate);
@@ -232,6 +237,8 @@ async function changeTacticalReadSource(source){
   const response=await requestSync('/api/resumen-tactico?action=records');
   const next=rehydrateTacticalFromNeon(response.entries);
   tacticalNeonData=next;tacticalReadSource='neon';tacticalData=next;tacticalOrigin='Neon · lote '+String(response.batchId||'').slice(0,8);
+  tacticalLastPublishedAt=String(response.lastDataUpdatedAt||'');
+  if(activeTab==='tactical'){updateVisiblePublicationDate();el('updated-text').textContent='Última consulta: '+new Date().toLocaleString('es-PE');}
  }catch(e){tacticalError=e.message||'No se pudo cargar el Resumen táctico.';}
  finally{tacticalBusy=false;renderTactical();}
 }
@@ -486,8 +493,7 @@ async function refreshDocumentDashboard(){
   documentDashboardEntries=Array.isArray(response.entries)?response.entries:[];
   documentDashboardGeneratedAt=String(response.generatedAt||'');
   documentDashboardLastPublishedAt=String(response.lastDataUpdatedAt||'');
-  const updateLabel=el('updated-data-text');
-  if(updateLabel)updateLabel.textContent='Última actualización de datos: '+formatDocumentPublicationDate(documentDashboardLastPublishedAt);
+  if(activeTab==='document-dashboard')updateVisiblePublicationDate();
   if(activeTab==='document-dashboard')el('updated-text').textContent='Última consulta: '+new Date().toLocaleString('es-PE');
  }catch(err){documentDashboardError=err.message||'No se pudo consultar el seguimiento documental.';}
  finally{documentDashboardBusy=false;renderDocumentDashboardView();}

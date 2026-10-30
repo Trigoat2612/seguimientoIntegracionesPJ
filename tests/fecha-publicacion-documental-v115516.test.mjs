@@ -21,11 +21,11 @@ test('La API consulta publicaciones reales, no la importación de copias ni la h
  assert.doesNotMatch(api,/lastDataUpdatedAt:new Date\(\)/);
 });
 
-test('La fecha de publicación aparece justo bajo Última consulta y solo en la pestaña documental',()=>{
+test('La fecha de publicación aparece justo bajo Última consulta y está disponible en las vistas documental y táctica',()=>{
  const app=read('../src/client/app.js');
  const html=read('../src/client/index.html');
  assert.match(html,/id="updated-text"[^>]*>[\s\S]*?<\/span><span id="updated-data-text"/);
- assert.match(app,/tab!=='document-dashboard'/);
+ assert.match(app,/!\['tactical','document-dashboard'\]\.includes\(tab\)/);
  assert.match(app,/documentDashboardLastPublishedAt=String\(response\.lastDataUpdatedAt\|\|''\)/);
  assert.match(app,/formatDocumentPublicationDate\(documentDashboardLastPublishedAt\)/);
  assert.match(app,/Última actualización de datos: /);

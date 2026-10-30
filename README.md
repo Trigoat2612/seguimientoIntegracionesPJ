@@ -1,3 +1,10 @@
+# V1.15.5.17 · Última actualización de datos en Resumen táctico
+
+- Bajo «Última consulta», el Resumen táctico muestra la fecha/hora de la última publicación efectiva en Neon, desde `tactical_migration_events` filtrando `event_type = 'published'`.
+- La fecha es independiente de las importaciones, los cotejos y las visitas al tablero; se presenta en horario de Perú.
+- Se conserva la fecha propia de «Resumen de documentos claves» y al alternar módulos cada vista muestra el dato correspondiente.
+- No requiere migraciones SQL. Pruebas de regresión y compilación verificadas.
+
 # V1.15.5.15 · Seguimiento documental con filtros multiselección
 
 Se incorpora la tabla Seguimiento y pendientes sobre la base estable V1.15.5.14. Los filtros Estado y Equipo validador permiten marcar varias opciones (OR dentro de cada filtro, AND entre filtros), con selección independiente de los controles gerenciales superiores. Se conserva el orden natural de los códigos documentales y el acceso a fichas.

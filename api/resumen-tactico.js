@@ -40,7 +40,9 @@ export default async function handler(req,res){
     if(!enabled)return error(res,409,'El Resumen táctico todavía utiliza Google Sheets. Publica primero un lote validado.');
     const entries=await existing(sql);
     if(!entries.length)return error(res,409,'La fuente Neon está habilitada, pero no hay integraciones activas. Restablece Google Sheets hasta reconciliar.');
-    return res.status(200).json({module:'resumen_tactico',activeSource:'neon',batchId:ctl.published_batch_id,entries,counts:tacticalCategoryCounts(entries)});
+    // Fecha de publicación efectiva, nunca de importación ni de consulta.
+    const publication=await sql`SELECT max(created_at) AS "lastDataUpdatedAt" FROM tactical_migration_events WHERE event_type='published'`;
+    return res.status(200).json({module:'resumen_tactico',activeSource:'neon',batchId:ctl.published_batch_id,entries,counts:tacticalCategoryCounts(entries),lastDataUpdatedAt:publication[0]?.lastDataUpdatedAt||null});
    }
    if(action!=='status')return error(res,400,'Acción de lectura desconocida.');
    const [batch,records]=await Promise.all([latest(sql),existing(sql)]);
