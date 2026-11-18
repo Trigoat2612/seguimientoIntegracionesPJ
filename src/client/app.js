@@ -1,5 +1,5 @@
 import {tabTitles} from './ui/navigation-config.js';
-import {parseTacticalHistory,filterTacticalHistory,renderTacticalJournalEntries,renderTacticalJournalModal} from './ui/tactical-journal.js';
+import {parseTacticalHistory,latestTacticalAgreement,filterTacticalHistory,renderTacticalJournalEntries,renderTacticalJournalModal} from './ui/tactical-journal.js';
 import {escape,number,trim,percent,unique,norm,statusClass,equivalentClass} from './core/formatting.js';
 import {parseXlsx} from './core/xlsx.js';
 import {renderSyncView,syncSourceFor,prepareSyncAction} from './ui/sincronizacion-ui.js';
@@ -767,10 +767,11 @@ function tacticalDetail(entry){
  // El resumen y el visor se alimentan exclusivamente de la versión Excel publicada.
  const published=tacticalNeonData?.entries?.find(e=>String(e.id)===String(entry.id));
  const history=parseTacticalHistory(published?.history||'');
- const latest=history[0];
- const short=latest?String(latest.detail||latest.raw).slice(0,215):'Sin anotaciones en la columna G.';
- const journal='<div class="tactical-detail-field tactical-history-field"><b>Estado situacional / hitos</b>'+
-  '<p>'+escape(short)+(latest&&String(latest.detail||latest.raw).length>215?'…':'')+'</p>'+
+ const agreement=latestTacticalAgreement(published?.history||'');
+ const agreementText=agreement?.text||'No se consignó un acuerdo explícito en la columna G.';
+ const short=agreementText.slice(0,240);
+ const journal='<div class="tactical-detail-field tactical-history-field"><b>Último acuerdo registrado'+(agreement?.date?' · '+escape(agreement.date):'')+'</b>'+
+  '<p>'+escape(short)+(agreementText.length>240?'…':'')+'</p>'+
   '<div class="tactical-history-tools"><span>'+history.length+' anotación(es) históricas</span>'+
   '<button type="button" class="btn btn-light btn-sm" data-action="tactical-journal-open" data-tactical-journal-id="'+escape(entry.id)+'" '+(published?'':'disabled title="Todavía no existe una versión Excel publicada"')+'>Ver bitácora Excel</button></div></div>';
  return '<div class="tactical-detail">'+
