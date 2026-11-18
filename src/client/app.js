@@ -43,7 +43,7 @@ let viasData=null,viaSelected='',viaSeverity='todas',viaExportBusy=false,viaRawS
 let viaReadSource='neon',viaGoogleData=null,viaNeonData=null,viaError='';
 let activityFlowData=null,activityGoogleData=null,activityNeonData=null,activityReadSource='neon',activityError='',activitySelected='',activitySeverity='todas',flowOpenedSteps=new Set(),flowOpenedActivities=new Set();
 let tacticalReadSource='neon',tacticalGoogleData=null,tacticalNeonData=null,tacticalGoogleOrigin='',tacticalLastPublishedAt='';
-let tacticalJournalActive=null,tacticalJournalPreviousFocus=null;
+let tacticalJournalActive=null,tacticalJournalPreviousFocus=null,tacticalJournalSourceLabel='';
 let tacticalData=null,tacticalBusy=false,tacticalError='',tacticalOrigin='',tacticalQuery='',tacticalStateFilter='Todos',tacticalCategoryFilter='todas',tacticalOpened=new Set(),tacticalSecondaryOpen=false,tacticalExportBusy=false;
 let specialty='todas',catalogSearch='',catalogObserved='todos',catalogAvailability='todos',catalogLinkFilter='todos',catalogExpanded=new Set();
 let validationEvidence=calculateValidation(new Map(),CATALOGO_FIJO);
@@ -237,9 +237,11 @@ async function changeTacticalReadSource(source){
  tacticalBusy=true;tacticalError='';renderTactical();
  try{
   const response=await requestSync('/api/resumen-tactico?action=records');
+  if(response.historySource!=='excel_publicado_columna_G')throw new Error('La API no acredita la fuente exclusiva Excel para la bitácora.');
   const next=rehydrateTacticalFromNeon(response.entries);
   tacticalNeonData=next;tacticalReadSource='neon';tacticalData=next;tacticalOrigin='Neon · lote '+String(response.batchId||'').slice(0,8);
   tacticalLastPublishedAt=String(response.lastDataUpdatedAt||'');
+  tacticalJournalSourceLabel=String(response.sourceLabel||'Excel publicado');
   if(activeTab==='tactical'){updateVisiblePublicationDate();el('updated-text').textContent='Última consulta: '+new Date().toLocaleString('es-PE');}
  }catch(e){tacticalError=e.message||'No se pudo cargar el Resumen táctico.';}
  finally{tacticalBusy=false;renderTactical();}
@@ -719,12 +721,12 @@ async function exportTacticalPpt(){
  finally{tacticalExportBusy=false;renderTactical();}
 }
 function openTacticalJournal(id){
- const entry=tacticalData?.entries?.find(item=>String(item.id)===String(id));
+ const entry=tacticalNeonData?.entries?.find(item=>String(item.id)===String(id));
  if(!entry)return;
  closeTacticalJournal();
  tacticalJournalActive=entry;
  tacticalJournalPreviousFocus=document.activeElement;
- document.body.insertAdjacentHTML('beforeend',renderTacticalJournalModal(entry));
+ document.body.insertAdjacentHTML('beforeend',renderTacticalJournalModal(entry,{sourceLabel:tacticalJournalSourceLabel,publishedAt:tacticalLastPublishedAt}));
  document.body.classList.add('tactical-journal-is-open');
  el('tactical-journal-search')?.focus();
 }
@@ -762,13 +764,15 @@ function tacticalDetail(entry){
  const alerts=entry.dateAlerts||[];
  const alertFields=new Set(alerts.map(a=>a.field));
  const pair=(name,value)=>'<div class="tactical-detail-field '+(alertFields.has(name)?'tactical-date-field-alert':'')+'"><b>'+escape(name)+'</b><p>'+tacticalLong(value)+'</p></div>';
- const history=parseTacticalHistory(entry.history);
+ // El resumen y el visor se alimentan exclusivamente de la versión Excel publicada.
+ const published=tacticalNeonData?.entries?.find(e=>String(e.id)===String(entry.id));
+ const history=parseTacticalHistory(published?.history||'');
  const latest=history[0];
  const short=latest?String(latest.detail||latest.raw).slice(0,215):'Sin anotaciones en la columna G.';
  const journal='<div class="tactical-detail-field tactical-history-field"><b>Estado situacional / hitos</b>'+
   '<p>'+escape(short)+(latest&&String(latest.detail||latest.raw).length>215?'…':'')+'</p>'+
   '<div class="tactical-history-tools"><span>'+history.length+' anotación(es) históricas</span>'+
-  '<button type="button" class="btn btn-light btn-sm" data-action="tactical-journal-open" data-tactical-journal-id="'+escape(entry.id)+'">Ver bitácora</button></div></div>';
+  '<button type="button" class="btn btn-light btn-sm" data-action="tactical-journal-open" data-tactical-journal-id="'+escape(entry.id)+'" '+(published?'':'disabled title="Todavía no existe una versión Excel publicada"')+'>Ver bitácora Excel</button></div></div>';
  return '<div class="tactical-detail">'+
   (alerts.length?'<div class="tactical-date-notice" role="alert"><strong>⚠ Fecha pendiente de definición</strong><span>Revisar '+escape(alerts.map(a=>a.field).join(', '))+': contiene «Por informar» o «Revisión con…».</span></div>':'')+
   '<div class="tactical-detail-grid">'+
