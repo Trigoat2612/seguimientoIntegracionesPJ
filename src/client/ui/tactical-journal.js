@@ -39,7 +39,7 @@ export function parseTacticalHistory(raw=''){
  if(current)groups.push(current);
  return groups.map((g,index)=>{
   const rawRecord=g.lines.join('\n');
-  const body=g.date==='Sin fecha'?rawRecord:rawRecord.replace(heading,'$4');
+  const body=g.date==='Sin fecha'?rawRecord:g.lines.map((line,i)=>i===0?line.replace(heading,'$4'):line).join('\n');
   const parsed=sections(body);
   return {...parsed,index,date:g.date,dateSort:g.dateSort,raw:rawRecord,
    hasPending:parsed.pendings.some(Boolean)};
