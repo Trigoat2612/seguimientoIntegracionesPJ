@@ -5,6 +5,7 @@ import {identifyEditor} from '../src/server/autorizacion-servidor.js';
 import {extractTacticalEntries,compareTacticalEntries} from '../src/shared/tactical/resumen-tactico-migracion.js';
 import {normalizeForChecksum} from '../src/shared/sync/sincronizacion-modelo.js';
 import {tacticalCategoryCounts} from '../src/shared/tactical/tactical.js';
+import {publishedTacticalEntries} from '../src/shared/tactical/bitacora-publicada.js';
 const error=(res,status,message)=>res.status(status).json({error:message});
 const noCache=res=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');};
 async function control(sql){
@@ -15,6 +16,14 @@ async function control(sql){
 async function latest(sql){
  const rows=await sql`SELECT id,checksum,row_count,source_label,imported_at FROM migration_batches WHERE module_key='resumen_tactico' ORDER BY imported_at DESC,id DESC LIMIT 1`;
  return rows[0]||null;
+}
+async function existingPublished(sql, batchId){
+ if(!batchId)return [];
+ // No recuperar otras bitácoras del proyecto ni borradores del actualizador.
+ const rows=await sql`SELECT source_row,integration_name,situational_history,entry,source_batch_id,is_active
+  FROM tactical_tracking
+  WHERE is_active=TRUE AND source_batch_id=${batchId}::uuid ORDER BY source_row`;
+ return publishedTacticalEntries(rows,batchId);
 }
 async function existing(sql){
  const rows=await sql`SELECT entry FROM tactical_tracking WHERE is_active=TRUE ORDER BY source_row`;
@@ -38,11 +47,12 @@ export default async function handler(req,res){
    const action=String(req.query?.action||'status');
    if(action==='records'){
     if(!enabled)return error(res,409,'El Resumen táctico todavía utiliza Google Sheets. Publica primero un lote validado.');
-    const entries=await existing(sql);
+    const entries=await existingPublished(sql,ctl.published_batch_id);
     if(!entries.length)return error(res,409,'La fuente Neon está habilitada, pero no hay integraciones activas. Restablece Google Sheets hasta reconciliar.');
     // Fecha de publicación efectiva, nunca de importación ni de consulta.
-    const publication=await sql`SELECT max(created_at) AS "lastDataUpdatedAt" FROM tactical_migration_events WHERE event_type='published'`;
-    return res.status(200).json({module:'resumen_tactico',activeSource:'neon',batchId:ctl.published_batch_id,entries,counts:tacticalCategoryCounts(entries),lastDataUpdatedAt:publication[0]?.lastDataUpdatedAt||null});
+    const publication=await sql`SELECT max(created_at) AS "lastDataUpdatedAt" FROM tactical_migration_events WHERE event_type='published' AND batch_id=${ctl.published_batch_id}::uuid`;
+    const source=await sql`SELECT source_label FROM migration_batches WHERE id=${ctl.published_batch_id}::uuid LIMIT 1`;
+    return res.status(200).json({module:'resumen_tactico',activeSource:'neon',historySource:'excel_publicado_columna_G',batchId:ctl.published_batch_id,sourceLabel:source[0]?.source_label||'',entries,counts:tacticalCategoryCounts(entries),lastDataUpdatedAt:publication[0]?.lastDataUpdatedAt||null});
    }
    if(action!=='status')return error(res,400,'Acción de lectura desconocida.');
    const [batch,records]=await Promise.all([latest(sql),existing(sql)]);
