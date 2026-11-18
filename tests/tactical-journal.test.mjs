@@ -18,7 +18,7 @@ test('Ordena fechas en forma descendente y conserva una nota continuada',()=>{
  assert.equal(entries.length,4);
  assert.deepEqual(entries.map(x=>x.date),['16/10','15/10','15/10','07/10']);
  assert.match(entries[2].raw,/continúa la anotación/);
- assert.match(entries[2].detail,/continúa la anotación/);
+ assert.match(entries[2].pendings[0],/continúa la anotación/);
  assert.equal(entries[2].agreements.length,1);
  assert.equal(entries[2].pendings.length,1);
  assert.equal(entries[0].hasPending,false);
