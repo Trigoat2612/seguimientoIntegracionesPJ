@@ -683,3 +683,50 @@
 .page-intro .updated{display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:normal;text-align:right}
 .page-intro #updated-data-text{color:#798ca3;font-size:11px}
 @media(max-width:700px){.page-intro .updated{align-items:flex-start;text-align:left}}
+
+
+/* Historial de integraciones: vista de lectura inspirada en la bitácora del actualizador. */
+.tactical-history-field{border:1px solid #d8e7f3;background:#fff;border-radius:8px;padding:10px}
+.tactical-history-field>p{font-size:11px;line-height:1.6;color:#385c77}
+.tactical-history-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:8px;border-top:1px solid #e3edf5}
+.tactical-history-tools span{font-size:10px;color:#657f95}
+.tactical-history-tools button{font-size:11px;min-height:34px;white-space:nowrap}
+body.tactical-journal-is-open{overflow:hidden}
+.tactical-journal-overlay{position:fixed;inset:0;z-index:20000;display:flex;justify-content:center;align-items:center;padding:24px;isolation:isolate}
+.tactical-journal-scrim{position:absolute;inset:0;background:rgba(17,41,64,.63);backdrop-filter:blur(3px)}
+.tactical-journal-panel{position:relative;z-index:1;width:min(100%,970px);max-height:min(92vh,1000px);overflow:hidden;display:flex;flex-direction:column;background:#fff;color:#1e405d;border:1px solid #dae6f0;border-radius:18px;box-shadow:0 24px 90px rgba(5,30,55,.25)}
+.tactical-journal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:25px 30px 19px;border-bottom:1px solid #e3edf5}
+.tactical-journal-eyebrow{display:block;font-size:10px;color:#457797;letter-spacing:.11em;font-weight:800;margin-bottom:8px}
+.tactical-journal-header h2{font-size:22px;line-height:1.25;font-weight:800;color:#173a57;margin:0 0 8px}
+.tactical-journal-header p{font-size:12px;color:#6c8299;line-height:1.5;margin:0}
+.tactical-journal-header button{flex-shrink:0;white-space:nowrap}
+.tactical-journal-tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;gap:14px;padding:19px 30px 16px}
+.tactical-journal-search-label{display:flex;flex-direction:column;gap:7px;min-width:0;font-size:11px;font-weight:750;color:#3b5c78}
+.tactical-journal-search-label input{width:100%;min-height:42px;font-size:13px;background:#fff;color:#233f58;border:1px solid #cbdeed;border-radius:9px}
+.tactical-journal-only-pending{display:flex;gap:7px;align-items:center;font-size:11px;color:#506a82;white-space:nowrap;cursor:pointer;padding:11px 0}
+.tactical-journal-only-pending input{accent-color:#1e6da3}
+.tactical-journal-tools>.btn{min-height:42px;font-size:11px;white-space:nowrap}
+.tactical-journal-meta{padding:0 30px 13px;display:flex;gap:13px;flex-wrap:wrap;justify-content:space-between;font-size:11px;color:#6d879a}
+.tactical-journal-meta span:first-child{font-weight:800;color:#2f648b}
+.tactical-journal-scroll{overflow-y:auto;min-height:100px;padding:7px 30px 22px;overscroll-behavior:contain}
+.tactical-journal-timeline{margin-left:7px;padding-left:25px;border-left:2px solid #c7deef;display:flex;flex-direction:column;gap:12px}
+.tactical-journal-entry{position:relative;border:1px solid #dce8f2;border-radius:12px;background:#fff;box-shadow:0 3px 12px rgba(20,60,90,.035)}
+.tactical-journal-entry::before{content:'';position:absolute;top:18px;left:-34px;border:3px solid #fff;background:#3989bb;border-radius:50%;width:11px;height:11px;box-sizing:content-box}
+.tactical-journal-entry[open]{border-color:#87b9d9;background:#fbfdff}
+.tactical-journal-entry summary{display:flex;align-items:center;gap:13px;padding:15px 14px;list-style:none;cursor:pointer;min-height:64px}
+.tactical-journal-entry summary::-webkit-details-marker{display:none}
+.tactical-journal-entry summary:focus-visible{outline:2px solid #207bac;outline-offset:2px;border-radius:10px}
+.tactical-journal-date{padding:7px 9px;border-radius:7px;background:#eaf2fa;color:#205986;font-size:12px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tactical-journal-summary{min-width:0;flex:1;color:#244a68;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.tactical-journal-pending-chip{flex-shrink:0;background:#fff2e5;color:#9e5c20;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:800}
+.tactical-journal-entry-body{padding:0 15px 17px;border-top:1px solid #ebf1f6}
+.tactical-journal-entry-body section{margin-top:13px}
+.tactical-journal-entry-body strong{display:block;font-size:11px;font-weight:800;letter-spacing:.02em;color:#456b86}
+.tactical-journal-entry-body p{font-size:12px;color:#284d69;line-height:1.7;margin:5px 0;white-space:pre-line;overflow-wrap:anywhere}
+.tactical-journal-entry-body .tactical-journal-agreement{padding:12px;border-left:3px solid #51a887;border-radius:0 8px 8px 0;background:#f2faf6}
+.tactical-journal-entry-body .tactical-journal-pending{padding:12px;border-left:3px solid #dfa05b;border-radius:0 8px 8px 0;background:#fff8ee}
+.tactical-journal-entry-body>small{display:block;font-size:10px;line-height:1.45;color:#8293a4;margin-top:14px}
+.tactical-journal-empty{border:1px dashed #d2e1ed;background:#f7fbfe;padding:27px;text-align:center;border-radius:10px;font-size:12px;color:#768ba1}
+.tactical-journal-footnote{padding:12px 30px;background:#f7fafd;border-top:1px solid #e4edf4;font-size:11px;line-height:1.5;color:#688098}
+@media(max-width:850px){.tactical-journal-tools{grid-template-columns:1fr auto}.tactical-journal-search-label{grid-column:1/-1}}
+@media(max-width:560px){.tactical-journal-overlay{padding:0}.tactical-journal-panel{width:100%;max-height:100dvh;height:100dvh;border-radius:0}.tactical-journal-header{padding:17px;gap:8px}.tactical-journal-header h2{font-size:18px}.tactical-journal-header button{font-size:11px;padding:8px}.tactical-journal-tools{padding:12px 17px;grid-template-columns:1fr;gap:8px;align-items:stretch}.tactical-journal-search-label{grid-column:auto}.tactical-journal-only-pending{padding:4px 0}.tactical-journal-tools>.btn{width:max-content}.tactical-journal-meta{padding:0 17px 10px;gap:6px}.tactical-journal-scroll{padding:6px 16px 20px}.tactical-journal-timeline{padding-left:16px}.tactical-journal-entry::before{left:-25px}.tactical-journal-entry summary{align-items:flex-start;flex-direction:column;gap:8px}.tactical-journal-pending-chip{flex-shrink:1}.tactical-journal-footnote{padding:11px 17px}}
