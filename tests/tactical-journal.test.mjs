@@ -50,7 +50,7 @@ test('Escapa HTML del origen y no habilita ediciones del historial',()=>{
  assert.match(html,/&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
  assert.doesNotMatch(html,/<script>/);
  assert.doesNotMatch(html,/<b>revisar<\/b>/);
- assert.match(html,/Pendiente citado/);
+ assert.match(html,/Pendiente en Excel/);
  assert.match(html,/Copiar columna G/);
  assert.doesNotMatch(html,/Guardar|Eliminar|Modificar bitácora/);
 });
