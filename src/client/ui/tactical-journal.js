@@ -58,7 +58,7 @@ export function renderTacticalJournalEntries(records){
   '<details class="tactical-journal-entry"><summary>'+
    '<span class="tactical-journal-date">'+esc(record.date)+'</span>'+
    '<span class="tactical-journal-summary">'+esc(brief(record.detail||record.raw))+'</span>'+
-   (record.hasPending?'<span class="tactical-journal-pending-chip">Pendiente citado</span>':'')+
+   (record.hasPending?'<span class="tactical-journal-pending-chip">Pendiente en Excel</span>':'')+
   '</summary><div class="tactical-journal-entry-body">'+
    '<section><strong>Hecho registrado</strong><p>'+esc(record.detail||'Sin hecho detallado')+'</p></section>'+
    record.agreements.filter(Boolean).map(s=>'<section class="tactical-journal-agreement"><strong>Acuerdo</strong><p>'+esc(s)+'</p></section>').join('')+
@@ -67,24 +67,24 @@ export function renderTacticalJournalEntries(records){
   '</div></details>').join('')+'</div>';
 }
 
-export function renderTacticalJournalModal(entry){
+export function renderTacticalJournalModal(entry,{sourceLabel='',publishedAt=''}={}){
  const history=String(entry?.history ?? ''),records=parseTacticalHistory(history);
  return '<div id="tactical-journal-modal" class="tactical-journal-overlay" data-tactical-journal-overlay>'+
  '<div class="tactical-journal-scrim" data-tactical-journal-scrim></div>'+
  '<section class="tactical-journal-panel" role="dialog" aria-modal="true" aria-labelledby="tactical-journal-title" tabindex="-1">'+
   '<header class="tactical-journal-header"><div><span class="tactical-journal-eyebrow">SEGUIMIENTO DE INTEGRACIONES · LABORAL</span>'+
    '<h2 id="tactical-journal-title">Historial de '+esc(entry?.name||'Integración')+'</h2>'+
-   '<p>Registros de la columna G, ordenados por fecha y con detalles desplegables.</p></div>'+
+   '<p>Solo anotaciones de la columna G del Excel publicado. No se incluyen propuestas del actualizador.</p></div>'+
    '<button type="button" class="btn btn-light" data-action="tactical-journal-close" aria-label="Cerrar historial">✕ Cerrar</button></header>'+
   '<div class="tactical-journal-tools">'+
    '<label class="tactical-journal-search-label" for="tactical-journal-search">Buscar en la bitácora'+
     '<input type="search" id="tactical-journal-search" class="input" placeholder="Buscar incidencia, fecha, acuerdo o responsable…" autocomplete="off"></label>'+
-   '<label class="tactical-journal-only-pending"><input type="checkbox" id="tactical-journal-only-pending"> Solo menciones de pendientes</label>'+
+   '<label class="tactical-journal-only-pending"><input type="checkbox" id="tactical-journal-only-pending"> Solo pendientes citados en G</label>'+
    '<button type="button" class="btn btn-light" data-action="tactical-journal-copy" '+(history?'':'disabled')+'>Copiar columna G</button>'+
   '</div><div class="tactical-journal-meta"><span id="tactical-journal-count">'+records.length+' anotación(es)</span>'+
-   '<span>Origen: estado situacional del Resumen táctico</span></div>'+
+   '<span>Fuente: '+esc(sourceLabel||'Excel publicado')+(publishedAt?' · '+esc(new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',dateStyle:'short',timeStyle:'short'}).format(new Date(publishedAt))):'')+'</span></div>'+
   '<div id="tactical-journal-entries" class="tactical-journal-scroll" aria-live="polite">'+
    (records.length?renderTacticalJournalEntries(records):'<div class="tactical-journal-empty">Esta integración no tiene anotaciones en la columna G.</div>')+
-  '</div><footer class="tactical-journal-footnote">Una mención de «Pendiente» no acredita que permanezca abierto. La vista es de consulta y no modifica la fuente.</footer>'+
+  '</div><footer class="tactical-journal-footnote">Solo Excel publicado · columna G. Una mención de «Pendiente» no acredita que permanezca abierto. La vista no incluye propuestas ni modifica la fuente.</footer>'+
  '</section></div>';
 }
