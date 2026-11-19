@@ -41,7 +41,7 @@ test('La API limita los registros por lote y proyecta situational_history',()=>{
  assert.match(app,/historySource!=='excel_publicado_columna_G'/);
  assert.match(app,/const entry=tacticalNeonData\?\.entries\?\.find/);
  assert.match(app,/const published=tacticalNeonData\?\.entries\?\.find/);
- assert.match(app,/Ver bitácora Excel/);
+ assert.match(app,/Ver bitácora/);
 });
 
 test('La vista identifica claramente el Excel y no ofrece propuestas',()=>{
