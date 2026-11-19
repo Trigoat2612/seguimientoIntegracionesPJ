@@ -1,9 +1,9 @@
 /** Bitácora documental 1.15.5.5. Fuente: bitacoraDocumentosClave, B:I.
- * Conserva estados no catalogados del origen, sin ofrecerlos para nuevos registros.
+ * Incluye Observado entre los estados seleccionables y conserva los valores de origen.
  */
 import {readDocumentCode} from './codigo-documento.js';
 export const TRACKING_SHEET='bitacoraDocumentosClave';
-export const TRACKING_STATUSES=Object.freeze(['Pendiente','Programado','En proceso de firma','Entregado','Validado']);
+export const TRACKING_STATUSES=Object.freeze(['Pendiente','Programado','En proceso de firma','Entregado','Validado','Observado']);
 export const VALIDATOR_TEAMS=Object.freeze(['DP LABORAL','TRANSVERSALES','TODOS LOS DP','GTI','PEJENP']);
 const key=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
 const text=v=>String(v??'').replace(/\u0000/g,'').trim();
