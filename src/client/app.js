@@ -773,7 +773,7 @@ function tacticalDetail(entry){
  const journal='<div class="tactical-detail-field tactical-history-field"><b>Último acuerdo registrado'+(agreement?.date?' · '+escape(agreement.date):'')+'</b>'+
   '<p>'+escape(short)+(agreementText.length>240?'…':'')+'</p>'+
   '<div class="tactical-history-tools"><span>'+history.length+' anotación(es) históricas</span>'+
-  '<button type="button" class="btn btn-light btn-sm" data-action="tactical-journal-open" data-tactical-journal-id="'+escape(entry.id)+'" '+(published?'':'disabled title="Todavía no existe una versión Excel publicada"')+'>Ver bitácora Excel</button></div></div>';
+  '<button type="button" class="btn btn-light btn-sm" data-action="tactical-journal-open" data-tactical-journal-id="'+escape(entry.id)+'" '+(published?'':'disabled title="Todavía no existe una versión Excel publicada"')+'>Ver bitácora</button></div></div>';
  return '<div class="tactical-detail">'+
   (alerts.length?'<div class="tactical-date-notice" role="alert"><strong>⚠ Fecha pendiente de definición</strong><span>Revisar '+escape(alerts.map(a=>a.field).join(', '))+': contiene «Por informar» o «Revisión con…».</span></div>':'')+
   '<div class="tactical-detail-grid">'+
