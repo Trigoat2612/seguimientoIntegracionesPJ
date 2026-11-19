@@ -1,8 +1,5 @@
-/**
- * Contrato del historial público: usar exclusivamente la columna G
- * de la versión de Seguimiento publicada desde el Excel.
- * Jamás mezclar bitácoras operativas, hallazgos ni propuestas en revisión.
- */
+/** Excel base más modificaciones expresamente publicadas. No incluye borradores. */
+import {tacticalDateAlerts} from './tactical.js';
 export function publishedTacticalEntries(rows, publishedBatchId) {
  if (!publishedBatchId) return [];
  const batch = String(publishedBatchId);
@@ -11,13 +8,14 @@ export function publishedTacticalEntries(rows, publishedBatchId) {
   .map(row => {
    const sourceRow = Number(row.source_row);
    const original = row.entry && typeof row.entry === 'object' ? row.entry : {};
+   const history=typeof row.situational_history === 'string' ? row.situational_history : '';
    return {
     ...original,
     id: 'seg-' + sourceRow,
     row: sourceRow,
     name: String(row.integration_name || original.name || ''),
-    // Única fuente admitida: la celda G importada para este lote.
-    history: typeof row.situational_history === 'string' ? row.situational_history : ''
+    history,
+    dateAlerts:tacticalDateAlerts(original.developmentClose,original.testsClose,original.gsjValidation)
    };
   });
 }

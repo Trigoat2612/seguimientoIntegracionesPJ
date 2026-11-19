@@ -19,10 +19,21 @@ async function latest(sql){
 }
 async function existingPublished(sql, batchId){
  if(!batchId)return [];
- // No recuperar otras bitácoras del proyecto ni borradores del actualizador.
- const rows=await sql`SELECT source_row,integration_name,situational_history,entry,source_batch_id,is_active
-  FROM tactical_tracking
-  WHERE is_active=TRUE AND source_batch_id=${batchId}::uuid ORDER BY source_row`;
+ // Solo el Excel base y los cambios publicados expresamente desde el actualizador; nunca borradores.
+ const rows=await sql`SELECT t.source_row,t.integration_name,
+  COALESCE(o.situational_history,t.situational_history) AS situational_history,
+  (t.entry || jsonb_build_object(
+    'dependency',COALESCE(o.dependency,t.dependency),
+    'developmentClose',COALESCE(o.development_close,t.development_close),
+    'testsClose',COALESCE(o.tests_close,t.tests_close),
+    'gsjValidation',COALESCE(o.gsj_validation,t.gsj_validation),
+    'considerations',COALESCE(o.considerations,t.considerations),
+    'history',COALESCE(o.situational_history,t.situational_history))) AS entry,
+  t.source_batch_id,t.is_active
+  FROM tactical_tracking t
+  LEFT JOIN tactical_published_overrides o
+    ON o.source_batch_id=t.source_batch_id AND o.source_row=t.source_row
+  WHERE t.is_active=TRUE AND t.source_batch_id=${batchId}::uuid ORDER BY t.source_row`;
  return publishedTacticalEntries(rows,batchId);
 }
 async function existing(sql){
@@ -50,9 +61,13 @@ export default async function handler(req,res){
     const entries=await existingPublished(sql,ctl.published_batch_id);
     if(!entries.length)return error(res,409,'La fuente Neon está habilitada, pero no hay integraciones activas. Restablece Google Sheets hasta reconciliar.');
     // Fecha de publicación efectiva, nunca de importación ni de consulta.
-    const publication=await sql`SELECT max(created_at) AS "lastDataUpdatedAt" FROM tactical_migration_events WHERE event_type='published' AND batch_id=${ctl.published_batch_id}::uuid`;
+    const publication=await sql`SELECT GREATEST(
+      COALESCE((SELECT max(created_at) FROM tactical_migration_events WHERE event_type='published' AND batch_id=${ctl.published_batch_id}::uuid),'epoch'::timestamptz),
+      COALESCE((SELECT max(published_at) FROM tactical_published_overrides WHERE source_batch_id=${ctl.published_batch_id}::uuid),'epoch'::timestamptz)
+    ) AS "lastDataUpdatedAt"`;
+    const applied=await sql`SELECT count(*)::int AS count FROM tactical_published_overrides WHERE source_batch_id=${ctl.published_batch_id}::uuid`;
     const source=await sql`SELECT source_label FROM migration_batches WHERE id=${ctl.published_batch_id}::uuid LIMIT 1`;
-    return res.status(200).json({module:'resumen_tactico',activeSource:'neon',historySource:'excel_publicado_columna_G',batchId:ctl.published_batch_id,sourceLabel:source[0]?.source_label||'',entries,counts:tacticalCategoryCounts(entries),lastDataUpdatedAt:publication[0]?.lastDataUpdatedAt||null});
+    return res.status(200).json({module:'resumen_tactico',activeSource:'neon',historySource:'excel_publicado_columna_G',publishedUpdates:Number(applied[0]?.count||0),batchId:ctl.published_batch_id,sourceLabel:(source[0]?.source_label||'Excel')+(Number(applied[0]?.count||0)>0?' + actualizaciones aprobadas':''),entries,counts:tacticalCategoryCounts(entries),lastDataUpdatedAt:publication[0]?.lastDataUpdatedAt||null});
    }
    if(action!=='status')return error(res,400,'Acción de lectura desconocida.');
    const [batch,records]=await Promise.all([latest(sql),existing(sql)]);

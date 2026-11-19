@@ -730,3 +730,9 @@ body.tactical-journal-is-open{overflow:hidden}
 .tactical-journal-footnote{padding:12px 30px;background:#f7fafd;border-top:1px solid #e4edf4;font-size:11px;line-height:1.5;color:#688098}
 @media(max-width:850px){.tactical-journal-tools{grid-template-columns:1fr auto}.tactical-journal-search-label{grid-column:1/-1}}
 @media(max-width:560px){.tactical-journal-overlay{padding:0}.tactical-journal-panel{width:100%;max-height:100dvh;height:100dvh;border-radius:0}.tactical-journal-header{padding:17px;gap:8px}.tactical-journal-header h2{font-size:18px}.tactical-journal-header button{font-size:11px;padding:8px}.tactical-journal-tools{padding:12px 17px;grid-template-columns:1fr;gap:8px;align-items:stretch}.tactical-journal-search-label{grid-column:auto}.tactical-journal-only-pending{padding:4px 0}.tactical-journal-tools>.btn{width:max-content}.tactical-journal-meta{padding:0 17px 10px;gap:6px}.tactical-journal-scroll{padding:6px 16px 20px}.tactical-journal-timeline{padding-left:16px}.tactical-journal-entry::before{left:-25px}.tactical-journal-entry summary{align-items:flex-start;flex-direction:column;gap:8px}.tactical-journal-pending-chip{flex-shrink:1}.tactical-journal-footnote{padding:11px 17px}}
+
+/* Enlace seguro de edición: el tablero sigue siendo público y de solo lectura. */
+.tactical-publish-link{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:11px;margin-top:9px;border:1px solid #c9dceb;background:#f4faff;border-radius:8px}
+.tactical-publish-link a{display:inline-flex;align-items:center;padding:9px 12px;background:#1764ad;color:#fff;border-radius:7px;font-size:11px;font-weight:750;text-decoration:none}
+.tactical-publish-link a:hover{background:#0d477e}
+.tactical-publish-link small{font-size:10px;color:#5e7790;line-height:1.4}

@@ -41,16 +41,16 @@ test('La API limita los registros por lote y proyecta situational_history',()=>{
  assert.match(app,/historySource!=='excel_publicado_columna_G'/);
  assert.match(app,/const entry=tacticalNeonData\?\.entries\?\.find/);
  assert.match(app,/const published=tacticalNeonData\?\.entries\?\.find/);
- assert.match(app,/Ver bitácora Excel/);
+ assert.match(app,/Ver bitácora/);
 });
 
 test('La vista identifica claramente el Excel y no ofrece propuestas',()=>{
  const html=renderTacticalJournalModal({name:'RENIEC',history:rows[0].situational_history},{
   sourceLabel:'Drive privado · Lista_Integraciones.xlsx',publishedAt:'2026-11-18T00:18:00Z'
  });
- assert.match(html,/Solo anotaciones de la columna G/);
+ assert.match(html,/Bitácora publicada: Excel de referencia/);
  assert.match(html,/Lista_Integraciones.xlsx/);
  assert.match(html,/17\/11\/26/);
- assert.match(html,/No se incluyen propuestas del actualizador/);
+ assert.match(html,/No incluye propuestas por revisar/);
  assert.equal((html.match(/class="tactical-journal-entry"/g)||[]).length,3);
 });
