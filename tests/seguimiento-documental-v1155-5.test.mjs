@@ -10,14 +10,17 @@ test('Importa columnas B:I, conserva códigos, fechas Excel, varios equipos y fi
  assert.deepEqual(p.errors,[]);assert.equal(p.entries.length,3);assert.equal(p.entries[0].documentCode,'4.10');
  assert.equal(p.entries[0].date,'2026-10-21');assert.deepEqual(p.entries[0].validatorTeams,['GTI','PEJENP']);
  assert.equal(p.entries[1].date,'');assert.equal(p.entries[1].status,'Observado');
- assert.ok(p.warnings.some(x=>x.includes('histórico')));
+ assert.ok(!p.warnings.some(x=>x.includes('histórico')));
 });
-test('Solo cinco estados nuevos en el formulario; estado histórico no se puede seleccionar',()=>{
- assert.deepEqual(TRACKING_STATUSES,['Pendiente','Programado','En proceso de firma','Entregado','Validado']);
+test('Seis estados seleccionables, incluido Observado, admitidos en alta y en historial',()=>{
+ assert.deepEqual(TRACKING_STATUSES,['Pendiente','Programado','En proceso de firma','Entregado','Validado','Observado']);
  assert.deepEqual(VALIDATOR_TEAMS,['DP LABORAL','TRANSVERSALES','TODOS LOS DP','GTI','PEJENP']);
- assert.throws(()=>validateTrackingCreate({documentCode:'4.1',status:'Observado',activity:'Acta'}),/estado de seguimiento/);
+ const observed=validateTrackingCreate({documentCode:'4.1',status:'Observado',activity:'Acta'});
+ assert.equal(observed.status,'Observado');assert.equal(observed.sourceStatus,'Observado');
  const html=renderTrackingSection({document:{codigo:'4.10'},canEdit:true,entries:parseTrackingSnapshot(rows).entries});
  for(const state of TRACKING_STATUSES)assert.match(html,new RegExp('<option value="'+state+'"'));
+ assert.match(html,/>Observado<\/option>/);
+ assert.doesNotMatch(html,/Observado \(histórico\)/);
  assert.doesNotMatch(html,/Registrar nueva incidencia|Incidencias<|Críticas sin cerrar|incident-create-form/);
  assert.match(html,/Seguimiento del documento 4.10|Seguimiento del documento/);
 });

@@ -67,5 +67,6 @@ test('La bitácora documental permite actividades E vacías sin perder comentari
  const transport=JSON.parse(JSON.stringify(snap));
  const checked=validateSheetSnapshot(transport);
  assert.equal(checked.valid,true,checked.errors.join(' '));
- assert.match(checked.warnings.join(' '),/histórico/);
+ assert.equal(transport.rows[1][3],'Observado');
+ assert.doesNotMatch(checked.warnings.join(' '),/histórico/);
 });
