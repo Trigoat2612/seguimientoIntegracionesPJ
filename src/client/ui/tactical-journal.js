@@ -1,5 +1,5 @@
 /**
- * Historial de lectura exclusiva de la columna G de la publicación Excel.
+ * Historial del Excel de referencia más las modificaciones publicadas expresamente.
  * El encabezado puede contener una fecha, fechas vinculadas o un intervalo.
  * No crear incidencias ni inferir que un pendiente histórico continúa abierto.
  */
@@ -92,7 +92,7 @@ export function renderTacticalJournalModal(entry,{sourceLabel='',publishedAt=''}
  '<section class="tactical-journal-panel" role="dialog" aria-modal="true" aria-labelledby="tactical-journal-title" tabindex="-1">'+
   '<header class="tactical-journal-header"><div><span class="tactical-journal-eyebrow">SEGUIMIENTO DE INTEGRACIONES · LABORAL</span>'+
    '<h2 id="tactical-journal-title">Historial de '+esc(entry?.name||'Integración')+'</h2>'+
-   '<p>Solo anotaciones de la columna G del Excel publicado. No se incluyen propuestas del actualizador.</p></div>'+
+   '<p>Bitácora publicada: Excel de referencia y cambios aprobados en Neon. No incluye propuestas por revisar.</p></div>'+
    '<button type="button" class="btn btn-light" data-action="tactical-journal-close" aria-label="Cerrar historial">✕ Cerrar</button></header>'+
   '<div class="tactical-journal-tools">'+
    '<label class="tactical-journal-search-label" for="tactical-journal-search">Buscar en la bitácora'+
@@ -103,6 +103,6 @@ export function renderTacticalJournalModal(entry,{sourceLabel='',publishedAt=''}
    '<span>Fuente: '+esc(sourceLabel||'Excel publicado')+(publishedAt?' · '+esc(new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',dateStyle:'short',timeStyle:'short'}).format(new Date(publishedAt))):'')+'</span></div>'+
   '<div id="tactical-journal-entries" class="tactical-journal-scroll" aria-live="polite">'+
    (records.length?renderTacticalJournalEntries(records):'<div class="tactical-journal-empty">Esta integración no tiene anotaciones en la columna G.</div>')+
-  '</div><footer class="tactical-journal-footnote">Solo Excel publicado · columna G. El historial no representa el estado vigente de los pendientes ni incorpora propuestas.</footer>'+
+  '</div><footer class="tactical-journal-footnote">Excel de referencia + actualizaciones publicadas · columna G consolidada. Las propuestas por revisar no aparecen en este historial.</footer>'+
  '</section></div>';
 }
