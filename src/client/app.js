@@ -764,7 +764,7 @@ function tacticalDetail(entry){
  const alerts=entry.dateAlerts||[];
  const alertFields=new Set(alerts.map(a=>a.field));
  const pair=(name,value)=>'<div class="tactical-detail-field '+(alertFields.has(name)?'tactical-date-field-alert':'')+'"><b>'+escape(name)+'</b><p>'+tacticalLong(value)+'</p></div>';
- // El resumen y el visor se alimentan exclusivamente de la versión Excel publicada.
+ // Lectura del Excel base y de las actualizaciones expresamente publicadas.
  const published=tacticalNeonData?.entries?.find(e=>String(e.id)===String(entry.id));
  const history=parseTacticalHistory(published?.history||'');
  const agreement=latestTacticalAgreement(published?.history||'');
@@ -781,7 +781,9 @@ function tacticalDetail(entry){
    pair('Cierre desarrollo',entry.developmentClose)+
    pair('Cierre pruebas SOFTPLAN / GTI',entry.testsClose)+
    pair('Validación GSJ',entry.gsjValidation)+
-  '</div><div class="tactical-detail-wide">'+journal+pair('Consideraciones',entry.considerations)+'</div></div>';
+  '</div><div class="tactical-detail-wide">'+journal+pair('Consideraciones',entry.considerations)+
+  '<div class="tactical-publish-link"><a href="https://actualizar-integraciones.vercel.app/?sourceRow='+encodeURIComponent(String(entry.row))+
+  '" target="_blank" rel="noopener noreferrer">Editar campos y publicar en Seguimiento ↗</a><small>Se requiere acceso autorizado en el Actualizador. El dashboard es de consulta.</small></div></div></div>';
 }
 function tacticalIntegrationRow(entry){
  const expanded=tacticalOpened.has(entry.id),dateAlert=!!entry.dateAlerts?.length;
